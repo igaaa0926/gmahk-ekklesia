@@ -3,28 +3,55 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types & Interfaces ──────────────────────────────────────────────────────
 type JadwalRow = {
-  id: string; judul: string; tanggal_mulai: string; tanggal_selesai: string | null;
-  lokasi: string | null; jenis: any; deskripsi: string | null;
-  ss_mc: any; ss_doa_buka: any; ss_diskusi: any; ss_mission: any; ss_pp_doa: any; ss_persembahan: any;
-  khotbah_lagu_pujian: any; khotbah_bacaan_persembahan: any; khotbah_mc: any; khotbah_cerita_anak: any;
-  pembawa_firman: any; pianis: any;
+  id: string;
+  judul: string;
+  tanggal_mulai: string;
+  lokasi: string | null;
+  jenis: string;
+  deskripsi: string | null;
+  ss_mc: string | null;
+  ss_doa_buka: string | null;
+  ss_diskusi: string | null;
+  ss_mission: string | null;
+  ss_pp_doa: string | null;
+  ss_persembahan: string | null;
+  khotbah_lagu_pujian: string | null;
+  khotbah_mc: string | null;
+  khotbah_cerita_anak: string | null;
+  pembawa_firman: string | null;
+  pianis: string | null;
+  penanggung_jawab_id?: string | null;
 };
+
 type FormState = Omit<JadwalRow, 'id'>;
 
 const JENIS_OPTIONS = [
-  { value: 'Kebaktian Utama', label: 'Kebaktian Utama' },
-  { value: 'Sabat Sekolah', label: 'Sabat Sekolah' },
-  { value: 'Rabu Malam', label: 'Rabu Malam' },
-  { value: 'Vesper', label: 'Ibadah Vesper' },
+  { value: 'Kebaktian Utama', label: '⛪ Kebaktian Utama' },
+  { value: 'Sabat Sekolah', label: '🌅 Sabat Sekolah' },
+  { value: 'Rabu Malam', label: '🌙 Rabu Malam' },
+  { value: 'Vesper', label: '🕯️ Ibadah Vesper' },
 ];
 
 const INITIAL_FORM: FormState = {
-  judul: '', tanggal_mulai: '', tanggal_selesai: null, lokasi: 'Gedung Gereja GMAHK Ekklesia',
-  jenis: 'Kebaktian Utama', deskripsi: '', ss_mc: '', ss_doa_buka: '', ss_diskusi: '',
-  ss_mission: '', ss_pp_doa: '', ss_persembahan: '', khotbah_lagu_pujian: '',
-  khotbah_bacaan_persembahan: '', khotbah_mc: '', khotbah_cerita_anak: '', pembawa_firman: '', pianis: '',
+  judul: '',
+  tanggal_mulai: '',
+  lokasi: 'Gedung Gereja GMAHK Ekklesia',
+  jenis: 'Kebaktian Utama',
+  deskripsi: '',
+  ss_mc: '',
+  ss_doa_buka: '',
+  ss_diskusi: '',
+  ss_mission: '',
+  ss_pp_doa: '',
+  ss_persembahan: '',
+  khotbah_lagu_pujian: '',
+  khotbah_mc: '',
+  khotbah_cerita_anak: '',
+  pembawa_firman: '',
+  pianis: '',
+  penanggung_jawab_id: null
 };
 
 function getStringValue(val: any): string {
@@ -41,7 +68,7 @@ export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // State Form Login Internal (.env.local Matcher)
+  // State Form Login Internal
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginErr, setLoginErr] = useState('');
@@ -53,7 +80,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
 
-  // Periksa status login dari localStorage saat pertama kali halaman dimuat
   useEffect(() => {
     const localStatus = localStorage.getItem('admin_authenticated');
     if (localStatus === 'true') {
@@ -87,16 +113,14 @@ export default function AdminPage() {
     setLoginLoading(true);
     setLoginErr('');
 
-    // Ambil data kredensial dari variabel .env.local
     const expectedUsername = process.env.NEXT_PUBLIC_ADMIN_USERNAME;
     const expectedPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 
-    // COCOKKAN SECARA LOKAL
     if (usernameInput === expectedUsername && passwordInput === expectedPassword) {
       localStorage.setItem('admin_authenticated', 'true');
       setIsLoggedIn(true);
     } else {
-      setLoginErr('Username atau Password yang kamu masukkan salah!');
+      setLoginErr('Username atau Password salah!');
     }
     setLoginLoading(false);
   };
@@ -109,30 +133,62 @@ export default function AdminPage() {
   };
 
   if (authLoading) {
-    return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-xs font-bold tracking-wider animate-pulse">MEMERIKSA OTORISASI...</div>;
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Memeriksa Otorisasi...</p>
+        </div>
+      </div>
+    );
   }
 
-  // 🔒 TAMPILAN LOGIN JIKA BELUM AUTENTIKASI LOKAL
+  // 🔒 BEAUTIFUL LOGIN INTERFACE
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border">
-          <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Admin Login</h2>
-          <p className="text-xs text-slate-400 mt-1 mb-6">GMAHK Ekklesia Management System</p>
-          {loginErr && <div className="mb-4 p-3 text-xs bg-red-50 text-red-600 rounded-xl font-medium">{loginErr}</div>}
-          <form onSubmit={handleLoginSubmit} className="space-y-4 text-left">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 flex items-center justify-center p-4">
+        <div className="bg-white/95 backdrop-blur-md rounded-3xl p-8 max-w-md w-full text-center shadow-2xl border border-white/20 transform transition-all">
+          <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
+            🔐
+          </div>
+          <h2 className="text-2xl font-black tracking-tight text-slate-900">Admin Panel</h2>
+          <p className="text-xs font-medium text-slate-500 mt-1 mb-8">GMAHK Ekklesia Management System</p>
+          
+          {loginErr && (
+            <div className="mb-6 p-3.5 text-xs bg-red-50 border border-red-100 text-red-600 rounded-xl font-semibold flex items-center gap-2 justify-center">
+              ⚠️ {loginErr}
+            </div>
+          )}
+
+          <form onSubmit={handleLoginSubmit} className="space-y-5 text-left">
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Username</label>
-              {/* text-black ditambahkan di sini agar font saat mengetik berwarna hitam */}
-              <input type="text" required value={usernameInput} onChange={e => setUsernameInput(e.target.value)} className="w-full mt-1 px-4 py-2.5 text-sm border rounded-xl bg-white text-black font-medium focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Username</label>
+              <input 
+                type="text" 
+                required 
+                value={usernameInput} 
+                onChange={e => setUsernameInput(e.target.value)} 
+                className="w-full mt-1.5 px-4 py-3 text-sm border border-slate-200 rounded-xl bg-white text-black font-semibold shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all"
+                placeholder="Masukkan username admin"
+              />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Password</label>
-              {/* text-black ditambahkan di sini agar font saat mengetik berwarna hitam */}
-              <input type="password" required value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="w-full mt-1 px-4 py-2.5 text-sm border rounded-xl bg-white text-black font-medium focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Password</label>
+              <input 
+                type="password" 
+                required 
+                value={passwordInput} 
+                onChange={e => setPasswordInput(e.target.value)} 
+                className="w-full mt-1.5 px-4 py-3 text-sm border border-slate-200 rounded-xl bg-white text-black font-semibold shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all"
+                placeholder="••••••••"
+              />
             </div>
-            <button type="submit" disabled={loginLoading} className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer disabled:opacity-50">
-              {loginLoading ? 'Memproses...' : 'Masuk Panel Admin'}
+            <button 
+              type="submit" 
+              disabled={loginLoading} 
+              className="w-full mt-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-blue-600/20 cursor-pointer disabled:opacity-50 transition-all hover:-translate-y-0.5 active:translate-y-0"
+            >
+              {loginLoading ? 'Membuka Panel...' : 'Masuk Sistem Admin →'}
             </button>
           </form>
         </div>
@@ -140,7 +196,7 @@ export default function AdminPage() {
     );
   }
 
-  // 🔓 PANEL UTAMA ADMIN JIKA USERNAME & PASSWORD COCOK
+  // 🔓 BEAUTIFUL MAIN PANEL INTERFACE
   const filtered = jadwals.filter(j => {
     if (!j) return false;
     const s = search.toLowerCase().trim();
@@ -148,33 +204,66 @@ export default function AdminPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 pb-12">
-      <header className="bg-slate-900 text-white shadow-md">
-        <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center justify-between w-full sm:w-auto">
-            <h1 className="text-xl font-black uppercase tracking-tight">Panel Admin Jadwal</h1>
+    <div className="min-h-screen bg-slate-50 text-slate-800 pb-16 antialiased">
+      {/* Dynamic Glassmorphism Header */}
+      <header className="bg-slate-900 text-white sticky top-0 z-40 shadow-xl border-b border-slate-800">
+        <div className="max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-xl">
+              ⛪
+            </div>
+            <div>
+              <h1 className="text-lg font-black uppercase tracking-tight">GMAHK Ekklesia</h1>
+              <p className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">Sistem Manajemen Jadwal Jemaat</p>
+            </div>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button onClick={() => setShowAdd(true)} className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer">➕ Tambah Jadwal</button>
-            <button onClick={handleLogout} className="px-4 py-2.5 bg-slate-800 hover:bg-red-600 text-white text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer">🚪 Keluar</button>
+            <button 
+              onClick={() => setShowAdd(true)} 
+              className="flex-1 sm:flex-none px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-md shadow-blue-600/10 cursor-pointer transition-all hover:-translate-y-0.5"
+            >
+              ➕ Tambah Jadwal Baru
+            </button>
+            <button 
+              onClick={handleLogout} 
+              className="px-4 py-2.5 bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer transition-colors"
+            >
+              🚪 Keluar
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 mt-8 space-y-6">
-        <div className="bg-white rounded-2xl border p-4 shadow-xs flex items-center gap-3">
-          <span className="text-slate-400 text-sm pl-1">🔍</span>
-          <input type="text" placeholder="Cari jadwal..." value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-transparent border-0 text-sm font-medium text-black focus:outline-none" />
+      {/* Main Container */}
+      <main className="max-w-6xl mx-auto px-4 mt-8 space-y-6">
+        {/* Search Bar Dashboard */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+          <span className="text-slate-400 text-lg pl-1">🔍</span>
+          <input 
+            type="text" 
+            placeholder="Cari berdasarkan judul jadwal atau kategori ibadah..." 
+            value={search} 
+            onChange={e => setSearch(e.target.value)} 
+            className="w-full bg-transparent border-0 text-sm font-semibold text-black focus:outline-none placeholder:text-slate-400" 
+          />
         </div>
 
+        {/* Content Section */}
         {loading ? (
-          <div className="text-center py-20 text-slate-400 text-sm animate-pulse">Memuat data...</div>
+          <div className="text-center py-24 text-slate-400 text-sm font-medium animate-pulse flex flex-col items-center justify-center gap-2">
+            <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+            Memuat daftar data jadwal...
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-slate-400 text-sm">Tidak ada jadwal ditemukan.</div>
+          <div className="bg-white rounded-2xl border border-dashed border-slate-300 py-16 text-center text-slate-400 text-sm font-medium shadow-2xs">
+            📭 Tidak ada jadwal ibadah yang ditemukan.
+          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3.5">
             {filtered.map(row => row?.id && (
-              <JadwalCard key={row.id} row={row}
+              <JadwalCard 
+                key={row.id} 
+                row={row}
                 onUpdated={upd => setJadwals(p => p.map(j => j?.id === upd?.id ? upd : j))}
                 onDeleted={id => setJadwals(p => p.filter(j => j?.id !== id))}
               />
@@ -188,63 +277,144 @@ export default function AdminPage() {
   );
 }
 
-// ─── Sub-Komponen Card & Modals ───────────────────────────────────────────────
+// ─── Component: Card Data Jadwal Jemaat ───────────────────────────────────────
 function JadwalCard({ row, onUpdated, onDeleted }: { row: JadwalRow; onUpdated: (r: JadwalRow) => void; onDeleted: (id: string) => void }) {
   const [showEdit, setShowEdit] = useState(false);
   const [delLoading, setDelLoading] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm(`Hapus jadwal "${getStringValue(row.judul)}"?`)) return;
+    if (!confirm(`Apakah Anda yakin ingin menghapus jadwal "${getStringValue(row.judul)}"?`)) return;
     setDelLoading(true);
     try {
       const { error } = await supabase.from('jadwal_ibadah').delete().eq('id', row.id);
       if (error) throw error;
       onDeleted(row.id);
-    } catch (err: any) { alert(err.message); } finally { setDelLoading(false); }
+    } catch (err: any) { 
+      alert(err.message); 
+    } finally { 
+      setDelLoading(false); 
+    }
+  };
+
+  const getBadgeStyle = (jenis: string) => {
+    switch(jenis) {
+      case 'Kebaktian Utama': return 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
+      case 'Sabat Sekolah': return 'bg-amber-50 text-amber-700 border-amber-200/60';
+      case 'Rabu Malam': return 'bg-indigo-50 text-indigo-700 border-indigo-200/60';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
   };
 
   return (
-    <div className="bg-white border rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <div>
-        <div className="flex items-center gap-2">
-          <h3 className="font-bold text-slate-900">{getStringValue(row.judul) || 'Tanpa Judul'}</h3>
-          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md uppercase">{getStringValue(row.jenis)}</span>
+    <div className="bg-white border border-slate-200/70 hover:border-blue-300 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs hover:shadow-md transition-all duration-200">
+      <div className="space-y-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-bold text-slate-900 text-base tracking-tight">{getStringValue(row.judul) || 'Tanpa Judul'}</h3>
+          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${getBadgeStyle(getStringValue(row.jenis))}`}>
+            {getStringValue(row.jenis)}
+          </span>
         </div>
-        <p className="text-xs text-slate-400 mt-1">🕒 {row.tanggal_mulai ? new Date(row.tanggal_mulai).toLocaleString('id-ID') : '─'}</p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-medium">
+          <span className="flex items-center gap-1">📅 {row.tanggal_mulai ? new Date(row.tanggal_mulai).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '─'} WIB</span>
+          <span className="flex items-center gap-1 text-slate-400">📍 {getStringValue(row.lokasi) || 'Gereja'}</span>
+        </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button onClick={() => setShowEdit(true)} className="px-4 py-2 text-xs border rounded-xl hover:bg-slate-50 font-semibold cursor-pointer">✏️ Edit</button>
-        <button onClick={handleDelete} disabled={delLoading} className="px-4 py-2 text-xs bg-red-50 text-red-600 rounded-xl font-semibold cursor-pointer">{delLoading ? '...' : '🗑️ Hapus'}</button>
+      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
+        <button 
+          onClick={() => setShowEdit(true)} 
+          className="px-4 py-2 text-xs border border-slate-200 hover:border-slate-300 rounded-xl hover:bg-slate-50 text-slate-700 font-bold shadow-2xs cursor-pointer transition-colors"
+        >
+          ✏️ Edit Detail
+        </button>
+        <button 
+          onClick={handleDelete} 
+          disabled={delLoading} 
+          className="px-4 py-2 text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 rounded-xl font-bold cursor-pointer transition-colors disabled:opacity-50"
+        >
+          {delLoading ? '...' : '🗑️ Hapus'}
+        </button>
       </div>
       {showEdit && <EditModal row={row} onClose={() => setShowEdit(false)} onUpdated={onUpdated} />}
     </div>
   );
 }
 
+// ─── Component: Form Fields Input (Clean & High Contrast) ────────────────────
 function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
   const upd = (key: keyof FormState, val: any) => setForm({ ...form, [key]: val === '' ? null : val });
+  
+  const inputStyle = "w-full mt-1.5 px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 hover:bg-white focus:bg-white text-black font-semibold shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
+  const labelStyle = "text-[11px] font-bold text-slate-500 uppercase tracking-wider";
+
   return (
-    <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 text-left">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="sm:col-span-2"><label className="text-[10px] font-bold text-slate-500 uppercase">Judul Acara</label><input type="text" required value={getStringValue(form.judul)} onChange={e => upd('judul', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl text-black" /></div>
-        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Kategori</label><select value={getStringValue(form.jenis)} onChange={e => upd('jenis', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl bg-white text-black">{JENIS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
-        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Tanggal & Waktu</label><input type="datetime-local" required value={getSafeDateString(form.tanggal_mulai)} onChange={e => upd('tanggal_mulai', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl text-black" /></div>
-        <div className="sm:col-span-2"><label className="text-[10px] font-bold text-slate-500 uppercase">Lokasi</label><input type="text" value={getStringValue(form.lokasi)} onChange={e => upd('lokasi', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl text-black" /></div>
-        <div className="sm:col-span-2"><label className="text-[10px] font-bold text-slate-500 uppercase">Deskripsi</label><textarea value={getStringValue(form.deskripsi)} onChange={e => upd('deskripsi', e.target.value)} rows={2} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl resize-none text-black" /></div>
+    <div className="space-y-6 max-h-[65vh] overflow-y-auto pr-2 text-left scrollbar-thin">
+      {/* Section 1: Informasi Pokok Ibadah */}
+      <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
+          <label className={labelStyle}>Judul Acara / Tema Ibadah</label>
+          <input type="text" required value={getStringValue(form.judul)} onChange={e => upd('judul', e.target.value)} className={inputStyle} placeholder="Contoh: Kebaktian Sabat Suci, Kuasa Doa" />
+        </div>
+        <div>
+          <label className={labelStyle}>Kategori Ibadah</label>
+          <select value={getStringValue(form.jenis)} onChange={e => upd('jenis', e.target.value)} className={`${inputStyle} bg-white`}>
+            {JENIS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelStyle}>Tanggal & Waktu Mulai</label>
+          <input type="datetime-local" required value={getSafeDateString(form.tanggal_mulai)} onChange={e => upd('tanggal_mulai', e.target.value)} className={inputStyle} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className={labelStyle}>Lokasi Pelaksanaan</label>
+          <input type="text" value={getStringValue(form.lokasi)} onChange={e => upd('lokasi', e.target.value)} className={inputStyle} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className={labelStyle}>Deskripsi Tambahan</label>
+          <textarea value={getStringValue(form.deskripsi)} onChange={e => upd('deskripsi', e.target.value)} rows={2} className={`${inputStyle} resize-none`} placeholder="Keterangan opsional..." />
+        </div>
       </div>
-      <div className="space-y-3 pt-4 border-t">
-        <h4 className="text-xs font-bold uppercase text-slate-900">🌅 Sesi I: Sekolah Sabat</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[{ k: 'ss_mc', l: 'MC / Protokol' }, { k: 'ss_doa_buka', l: 'Doa Buka' }, { k: 'ss_diskusi', l: 'Diskusi SS / Guru' }, { k: 'ss_mission', l: 'Cerita Mission' }, { k: 'ss_pp_doa', l: 'PP & Doa' }, { k: 'ss_persembahan', l: 'Ambil Persembahan' }].map(i => (
-            <div key={i.k}><label className="text-[10px] font-bold text-slate-400 uppercase">{i.l}</label><input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl text-black" /></div>
+
+      {/* Section 2: Susunan Petugas Sekolah Sabat */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+          <span className="text-base">🌅</span>
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Sesi I: Petugas Sekolah Sabat</h4>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {[
+            { k: 'ss_mc', l: 'MC / Protokol' },
+            { k: 'ss_doa_buka', l: 'Doa Pembuka' },
+            { k: 'ss_diskusi', l: 'Pemimpin Diskusi / Guru SS' },
+            { k: 'ss_mission', l: 'Pembaca Cerita Mission' },
+            { k: 'ss_pp_doa', l: 'Pujian & Doa Syafaat' },
+            { k: 'ss_persembahan', l: 'Petugas Ambil Persembahan' }
+          ].map(i => (
+            <div key={i.k}>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
+              <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
+            </div>
           ))}
         </div>
       </div>
-      <div className="space-y-3 pt-4 border-t">
-        <h4 className="text-xs font-bold uppercase text-slate-900">📖 Sesi II: Kebaktian Utama</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[{ k: 'khotbah_lagu_pujian', l: 'Lagu Pujian' }, { k: 'khotbah_bacaan_persembahan', l: 'Bacaan Persembahan' }, { k: 'khotbah_mc', l: 'MC / Pemimpin Jemaat' }, { k: 'khotbah_cerita_anak', l: 'Cerita Anak' }, { k: 'pembawa_firman', l: 'Khotbah' }, { k: 'pianis', l: 'Pianis' }].map(i => (
-            <div key={i.k}><label className="text-[10px] font-bold text-slate-400 uppercase">{i.l}</label><input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl text-black" /></div>
+
+      {/* Section 3: Susunan Kebaktian Utama / Khotbah */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+          <span className="text-base">📖</span>
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Sesi II: Petugas Kebaktian Utama</h4>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {[
+            { k: 'khotbah_lagu_pujian', l: 'Lagu Pujian Jemaat' },
+            { k: 'khotbah_mc', l: 'MC / Pemimpin Jemaat' },
+            { k: 'khotbah_cerita_anak', l: 'Cerita Anak-anak' },
+            { k: 'pembawa_firman', l: 'Pembawa Firman (Khotbah)' },
+            { k: 'pianis', l: 'Pianis / Organis' }
+          ].map(i => (
+            <div key={i.k}>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
+              <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
+            </div>
           ))}
         </div>
       </div>
@@ -252,50 +422,82 @@ function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState
   );
 }
 
+// ─── Component: Modal Tambah Data ───────────────────────────────────────────
 function AddModal({ onClose, onAdded }: { onClose: () => void; onAdded: (r: JadwalRow) => void }) {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [saving, setSaving] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault(); 
+    setSaving(true);
     try {
       const { data, error } = await supabase.from('jadwal_ibadah').insert([form]).select();
       if (error) throw error;
       if (data?.[0]) onAdded(data[0]);
       onClose();
-    } catch (err: any) { alert(err.message); } finally { setSaving(false); }
+    } catch (err: any) { 
+      alert(err.message); 
+    } finally { 
+      setSaving(false); 
+    }
   };
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-2xl flex flex-col p-6 shadow-xl border">
-        <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-sm uppercase text-black">➕ Tambah Jadwal</h3><button onClick={onClose} className="cursor-pointer text-black">✕</button></div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl w-full max-w-3xl flex flex-col p-6 shadow-2xl border border-slate-100 transform transition-all my-8">
+        <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-100">
+          <h3 className="font-black text-slate-900 text-base uppercase tracking-tight">➕ Tambah Jadwal Baru</h3>
+          <button onClick={onClose} className="w-7 h-7 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-500 font-bold text-sm flex items-center justify-center cursor-pointer transition-colors">✕</button>
+        </div>
+        <form onSubmit={handleSubmit}>
           <FormFields form={form} setForm={setForm} />
-          <button type="submit" disabled={saving} className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-bold uppercase text-xs cursor-pointer">{saving ? 'Menyimpan...' : '💾 Simpan'}</button>
+          <div className="pt-4 border-t border-slate-100 mt-6 flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 uppercase tracking-wider cursor-pointer">Batal</button>
+            <button type="submit" disabled={saving} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-blue-600/10 cursor-pointer disabled:opacity-50">
+              {saving ? 'Menyimpan...' : '💾 Simpan Jadwal'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
   );
 }
 
+// ─── Component: Modal Edit Data ─────────────────────────────────────────────
 function EditModal({ row, onClose, onUpdated }: { row: JadwalRow; onClose: () => void; onUpdated: (r: JadwalRow) => void }) {
   const [form, setForm] = useState<FormState>({ ...row });
   const [saving, setSaving] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault(); 
+    setSaving(true);
     try {
       const { data, error } = await supabase.from('jadwal_ibadah').update(form).eq('id', row.id).select();
       if (error) throw error;
       if (data?.[0]) onUpdated(data[0]);
       onClose();
-    } catch (err: any) { alert(err.message); } finally { setSaving(false); }
+    } catch (err: any) { 
+      alert(err.message); 
+    } finally { 
+      setSaving(false); 
+    }
   };
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-2xl flex flex-col p-6 shadow-xl border">
-        <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-sm uppercase text-black">✏️ Edit Jadwal</h3><button onClick={onClose} className="cursor-pointer text-black">✕</button></div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl w-full max-w-3xl flex flex-col p-6 shadow-2xl border border-slate-100 transform transition-all my-8">
+        <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-100">
+          <h3 className="font-black text-slate-900 text-base uppercase tracking-tight">✏️ Edit Jadwal Jemaat</h3>
+          <button onClick={onClose} className="w-7 h-7 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-500 font-bold text-sm flex items-center justify-center cursor-pointer transition-colors">✕</button>
+        </div>
+        <form onSubmit={handleSubmit}>
           <FormFields form={form} setForm={setForm} />
-          <button type="submit" disabled={saving} className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-bold uppercase text-xs cursor-pointer">{saving ? 'Memperbarui...' : '💾 Simpan Perubahan'}</button>
+          <div className="pt-4 border-t border-slate-100 mt-6 flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 uppercase tracking-wider cursor-pointer">Batal</button>
+            <button type="submit" disabled={saving} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-blue-600/10 cursor-pointer disabled:opacity-50">
+              {saving ? 'Memperbarui...' : '💾 Simpan Perubahan'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
