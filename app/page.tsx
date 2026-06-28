@@ -29,6 +29,29 @@ function getStringValue(val: any): string {
   return typeof val === 'object' ? String(val.nama || val.name || '') : String(val);
 }
 
+// ✨ Fungsi Format Tanggal Aman (Solusi Fix Eror Terminal)
+function formatJadwalDate(isoString: string | null): string {
+  if (!isoString) return '─';
+  try {
+    const dateObj = new Date(isoString);
+    
+    // Ambil nama hari secara terpisah
+    const namaHari = dateObj.toLocaleDateString('id-ID', { weekday: 'long' });
+    // Ambil tanggal, bulan, tahun, dan waktu secara aman
+    const detailWaktu = dateObj.toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    return `${namaHari, detailWaktu} WIB`;
+  } catch (err) {
+    return isoString;
+  }
+}
+
 // ─── Main Public Component ───────────────────────────────────────────────────
 export default function PublicJadwalPage() {
   const [jadwals, setJadwals] = useState<JadwalRow[]>([]);
@@ -43,7 +66,7 @@ export default function PublicJadwalPage() {
         const { data, error } = await supabase
           .from('jadwal_ibadah')
           .select('*')
-          .order('tanggal_mulai', { ascending: true }); // Diurutkan dari jadwal terdekat kedepan
+          .order('tanggal_mulai', { ascending: true });
         if (error) throw error;
         setJadwals(data || []);
       } catch (err) {
@@ -126,7 +149,7 @@ export default function PublicJadwalPage() {
                   </div>
                   <h3 className="font-bold text-slate-900 text-lg tracking-tight group-hover:text-blue-600 transition-colors">{getStringValue(row.judul) || 'Tanpa Tema'}</h3>
                   <p className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
-                    📅 {row.tanggal_mulai ? new Date(row.tanggal_mulai).toLocaleString('id-ID', { weekday: 'long', dateStyle: 'long', timeStyle: 'short' }) : '─'} WIB
+                    📅 {formatJadwalDate(row.tanggal_mulai)}
                   </p>
                 </div>
                 <div className="w-full sm:w-auto flex justify-end items-center text-xs font-bold text-blue-600 group-hover:translate-x-1 transition-transform shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
@@ -140,7 +163,7 @@ export default function PublicJadwalPage() {
 
       {/* ─── MODAL DETAIL: SUSUNAN PETUGAS IBADAH (PREMIUM VIEW) ─── */}
       {selectedJadwal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl w-full max-w-2xl flex flex-col p-6 shadow-2xl border border-slate-100 my-8 transform transition-all">
             
             {/* Header Modal */}
@@ -150,8 +173,8 @@ export default function PublicJadwalPage() {
                   {selectedJadwal.jenis}
                 </span>
                 <h3 className="font-black text-slate-900 text-xl tracking-tight mt-1">{getStringValue(selectedJadwal.judul)}</h3>
-                <p className="text-xs text-slate-500 font-medium mt-1">
-                  📅 {new Date(selectedJadwal.tanggal_mulai).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })} WIB
+                <p className="text-xs text-slate-500 font-semibold mt-1">
+                  📅 {formatJadwalDate(selectedJadwal.tanggal_mulai)}
                 </p>
               </div>
               <button 
@@ -163,7 +186,7 @@ export default function PublicJadwalPage() {
             </div>
 
             {/* Susunan Acara & Petugas Grid */}
-            <div className="space-y-5 overflow-y-auto max-h-[60vh] pr-2 scrollbar-thin">
+            <div className="space-y-5 overflow-y-auto max-h-[60vh] pr-2 scrollbar-thin text-left">
               {selectedJadwal.deskripsi && (
                 <div className="bg-blue-50/50 border border-blue-100/70 rounded-xl p-3.5 text-xs text-slate-700 font-medium">
                   💬 <span className="font-bold text-blue-900">Catatan Jemaat:</span> {selectedJadwal.deskripsi}
@@ -176,7 +199,7 @@ export default function PublicJadwalPage() {
                   <span className="text-sm">🌅</span>
                   <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Sesi I: Sekolah Sabat</h4>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                   {[
                     { label: 'MC / Protokol', value: selectedJadwal.ss_mc },
                     { label: 'Doa Pembuka', value: selectedJadwal.ss_doa_buka },
@@ -186,7 +209,7 @@ export default function PublicJadwalPage() {
                     { label: 'Ambil Persembahan', value: selectedJadwal.ss_persembahan },
                   ].map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center py-1 border-b border-slate-100 last:border-0">
-                      <span className="text-xs font-medium text-slate-400">{item.label}</span>
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">{item.label}</span>
                       <span className="text-xs font-bold text-black">{getStringValue(item.value) || '─'}</span>
                     </div>
                   ))}
@@ -199,7 +222,7 @@ export default function PublicJadwalPage() {
                   <span className="text-sm">📖</span>
                   <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Sesi II: Kebaktian Utama</h4>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                   {[
                     { label: 'Lagu Pujian', value: selectedJadwal.khotbah_lagu_pujian },
                     { label: 'MC / Pemimpin Jemaat', value: selectedJadwal.khotbah_mc },
@@ -208,7 +231,7 @@ export default function PublicJadwalPage() {
                     { label: 'Pianis / Organis', value: selectedJadwal.pianis },
                   ].map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center py-1 border-b border-slate-100 last:border-0">
-                      <span className="text-xs font-medium text-slate-400">{item.label}</span>
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">{item.label}</span>
                       <span className="text-xs font-bold text-blue-900">{getStringValue(item.value) || '─'}</span>
                     </div>
                   ))}
