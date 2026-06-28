@@ -48,10 +48,10 @@ const KHOTBAH_ROLES: { key: keyof JadwalRow; label: string }[] = [
 ];
 
 const JENIS_LABEL: Record<string, string> = {
-  ibadah_umum: 'Kebaktian Utama',
-  doa: 'Ibadah Doa',
-  pemuda: 'Pemuda',
-  anak: 'Sekolah Sabat Anak',
+  'Kebaktian Utama': 'Kebaktian Utama',
+  'Sabat Sekolah': 'Sabat Sekolah',
+  'Rabu Malam': 'Rabu Malam',
+  'Vesper': 'Ibadah Vesper',
 };
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -125,6 +125,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased pb-16">
+      {/* Hero Header */}
       <header className="bg-[#1a3a6e] text-white py-12 px-4 shadow-md text-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/30 pointer-events-none" />
         <div className="relative z-10 max-w-2xl mx-auto space-y-2">
@@ -149,6 +150,7 @@ export default function HomePage() {
           </div>
         ) : (
           <>
+            {/* Sisi Kiri: Detail Jadwal Terpilih (2 Sesi) */}
             <div className="md:col-span-2 space-y-6">
               {selected && (
                 <div className="bg-white border border-slate-200/80 rounded-3xl shadow-xs overflow-hidden p-6 sm:p-8 space-y-6">
@@ -198,6 +200,7 @@ export default function HomePage() {
               )}
             </div>
 
+            {/* Sisi Kanan: Daftar Histori/Arsip Jadwal Lain */}
             <div className="space-y-4">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
                 Arsip Jadwal Pekanan

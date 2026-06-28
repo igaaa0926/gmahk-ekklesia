@@ -31,13 +31,13 @@ type JadwalRow = {
 
 type FormState = Omit<JadwalRow, 'id'>;
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constants (Sesuai dengan Database Supabase) ──────────────────────────────
 
 const JENIS_OPTIONS = [
-  { value: 'ibadah_umum', label: 'Ibadah Umum' },
-  { value: 'doa', label: 'Ibadah Doa' },
-  { value: 'pemuda', label: 'Pemuda' },
-  { value: 'anak', label: 'Sekolah Sabat Anak' },
+  { value: 'Kebaktian Utama', label: 'Kebaktian Utama' },
+  { value: 'Sabat Sekolah', label: 'Sabat Sekolah' },
+  { value: 'Rabu Malam', label: 'Rabu Malam' },
+  { value: 'Vesper', label: 'Ibadah Vesper' },
 ];
 
 const INITIAL_FORM: FormState = {
@@ -45,7 +45,7 @@ const INITIAL_FORM: FormState = {
   tanggal_mulai: '',
   tanggal_selesai: null,
   lokasi: 'Gedung Gereja GMAHK Ekklesia',
-  jenis: 'ibadah_umum',
+  jenis: 'Kebaktian Utama',
   deskripsi: '',
   ss_mc: '',
   ss_doa_buka: '',
@@ -98,6 +98,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 antialiased font-sans pb-12">
+      {/* Admin Header */}
       <header className="bg-slate-900 text-white shadow-md">
         <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
@@ -115,6 +116,7 @@ export default function AdminPage() {
         </div>
       </header>
 
+      {/* Main Bar */}
       <main className="max-w-5xl mx-auto px-4 mt-8 space-y-6">
         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
           <span className="text-slate-400 text-sm pl-1">🔍</span>
@@ -159,7 +161,7 @@ export default function AdminPage() {
       {showAdd && (
         <AddModal
           onClose={() => setShowAdd(false)}
-          onAdded={row => setJadwals(p => [...p, row].sort((a, b) => a.tanggal_mulai.localeCompare(b.tanggal_mulai)))}
+          onAdded={row => setJadwals(p => [...p, row].sort((a, b) => b.tanggal_mulai.localeCompare(a.tanggal_mulai)))}
         />
       )}
     </div>
@@ -220,6 +222,7 @@ function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState
 
   return (
     <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Group Utama */}
       <div className="space-y-4">
         <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">📌 Informasi Utama Acara</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
