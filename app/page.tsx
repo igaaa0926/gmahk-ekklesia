@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 // ─── Types & Interfaces ──────────────────────────────────────────────────────
@@ -29,15 +30,12 @@ function getStringValue(val: any): string {
   return typeof val === 'object' ? String(val.nama || val.name || '') : String(val);
 }
 
-// ✨ Fungsi Format Tanggal Aman (Solusi Fix Eror Terminal)
+// ✨ FUNGSI FORMAT TANGGAL YANG SUDAH DIPERBAIKI (100% AMAN UNTUK VERCEL)
 function formatJadwalDate(isoString: string | null): string {
   if (!isoString) return '─';
   try {
     const dateObj = new Date(isoString);
-    
-    // Ambil nama hari secara terpisah
     const namaHari = dateObj.toLocaleDateString('id-ID', { weekday: 'long' });
-    // Ambil tanggal, bulan, tahun, dan waktu secara aman
     const detailWaktu = dateObj.toLocaleString('id-ID', {
       day: 'numeric',
       month: 'long',
@@ -45,8 +43,8 @@ function formatJadwalDate(isoString: string | null): string {
       hour: '2-digit',
       minute: '2-digit'
     });
-
-    return `${namaHari, detailWaktu} WIB`;
+    // Menggunakan tanda sambung/spasi biasa, bukan operator koma di dalam ekspresi
+    return `${namaHari}, ${detailWaktu} WIB`;
   } catch (err) {
     return isoString;
   }
@@ -85,88 +83,108 @@ export default function PublicJadwalPage() {
   });
 
   const getBadgeStyle = (jenis: string) => {
-    switch (jenis) {
-      case 'Kebaktian Utama': return 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
-      case 'Sabat Sekolah': return 'bg-amber-50 text-amber-700 border-amber-200/60';
-      case 'Rabu Malam': return 'bg-indigo-50 text-indigo-700 border-indigo-200/60';
-      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+    const typeStr = getStringValue(jenis).toLowerCase();
+    if (typeStr.includes('utama') || typeStr.includes('umum')) {
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
+    } else if (typeStr.includes('sabat') || typeStr.includes('sekolah')) {
+      return 'bg-amber-50 text-amber-700 border-amber-200/60';
+    } else if (typeStr.includes('rabu') || typeStr.includes('doa')) {
+      return 'bg-indigo-50 text-indigo-700 border-indigo-200/60';
     }
+    return 'bg-slate-100 text-slate-700 border-slate-200';
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 pb-20 antialiased selection:bg-blue-500 selection:text-white">
-      {/* Premium Public Banner */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 text-white py-16 px-4 text-center shadow-lg relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.1),transparent_50%)]"></div>
-        <div className="max-w-4xl mx-auto space-y-3 relative z-10">
-          <div className="w-14 h-14 bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl flex items-center justify-center text-2xl mx-auto shadow-xl">
-            ⛪
+    <div className="min-h-screen bg-slate-50 text-slate-800 pb-12 antialiased flex flex-col justify-between selection:bg-blue-500 selection:text-white">
+      
+      <div className="flex-grow">
+        {/* Premium Public Banner */}
+        <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 text-white py-16 px-4 text-center shadow-lg relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.1),transparent_50%)]"></div>
+          <div className="max-w-4xl mx-auto space-y-3 relative z-10">
+            <div className="w-14 h-14 bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl flex items-center justify-center text-2xl mx-auto shadow-xl">
+              ⛪
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight">GMAHK EKKLESIA</h1>
+            <p className="text-xs sm:text-sm font-semibold tracking-widest text-blue-400 uppercase">Informasi Jadwal Pelayanan & Susunan Acara Ibadah</p>
+            <div className="w-12 h-1 bg-blue-500 mx-auto rounded-full mt-4"></div>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight">GMAHK EKKLESIA</h1>
-          <p className="text-xs sm:text-sm font-semibold tracking-widest text-blue-400 uppercase">Informasi Jadwal Pelayanan & Susunan Acara Ibadah</p>
-          <div className="w-12 h-1 bg-blue-500 mx-auto rounded-full mt-4"></div>
         </div>
+
+        {/* Main Content Area */}
+        <main className="max-w-4xl mx-auto px-4 -mt-7 relative z-20 space-y-6">
+          {/* Search Bar */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xl flex items-center gap-3 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+            <span className="text-slate-400 text-lg pl-1">🔍</span>
+            <input 
+              type="text" 
+              placeholder="Cari tema khotbah, pembicara, atau kategori ibadah..." 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              className="w-full bg-transparent border-0 text-sm font-semibold text-black focus:outline-none placeholder:text-slate-400" 
+            />
+          </div>
+
+          {/* Info Grid List */}
+          {loading ? (
+            <div className="text-center py-24 text-slate-400 text-sm font-medium flex flex-col items-center justify-center gap-2">
+              <div className="w-6 h-6 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin"></div>
+              Menyelaraskan data jadwal jemaat...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-dashed border-slate-200 py-20 text-center text-slate-400 text-sm font-medium shadow-sm">
+              📭 Belum ada jadwal ibadah yang cocok atau dipublikasikan.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {filtered.map(row => (
+                <div 
+                  key={row.id}
+                  onClick={() => setSelectedJadwal(row)}
+                  className="bg-white border border-slate-200/70 hover:border-blue-400 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs hover:shadow-lg transition-all duration-300 cursor-pointer group"
+                >
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${getBadgeStyle(row.jenis)}`}>
+                        {getStringValue(row.jenis)}
+                      </span>
+                      <span className="text-xs text-slate-400 font-medium">📍 {getStringValue(row.lokasi) || 'Gereja'}</span>
+                    </div>
+                    <h3 className="font-bold text-slate-900 text-lg tracking-tight group-hover:text-blue-600 transition-colors">{getStringValue(row.judul) || 'Tanpa Tema'}</h3>
+                    <p className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                      📅 {formatJadwalDate(row.tanggal_mulai)}
+                    </p>
+                  </div>
+                  <div className="w-full sm:w-auto flex justify-end items-center text-xs font-bold text-blue-600 group-hover:translate-x-1 transition-transform shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
+                    Lihat Susunan Petugas ➜
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
       </div>
 
-      {/* Main Content Area */}
-      <main className="max-w-4xl mx-auto px-4 -mt-7 relative z-20 space-y-6">
-        {/* Search Input Bar */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xl flex items-center gap-3 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-          <span className="text-slate-400 text-lg pl-1">🔍</span>
-          <input 
-            type="text" 
-            placeholder="Cari tema khotbah, pembicara, atau kategori ibadah..." 
-            value={search} 
-            onChange={e => setSearch(e.target.value)} 
-            className="w-full bg-transparent border-0 text-sm font-semibold text-black focus:outline-none placeholder:text-slate-400" 
-          />
+      {/* Footer & Admin Button */}
+      <footer className="w-full text-center mt-12 pt-6 border-t border-slate-200/60 max-w-4xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-400 font-medium">
+        <div>
+          © {new Date().getFullYear()} GMAHK Ekklesia. Hak Cipta Dilindungi.
         </div>
+        <div>
+          <Link 
+            href="/admin" 
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-lg transition-colors font-bold flex items-center gap-1 border border-slate-200/40"
+          >
+            🔐 Panel Manajemen Admin
+          </Link>
+        </div>
+      </footer>
 
-        {/* Info Grid List */}
-        {loading ? (
-          <div className="text-center py-24 text-slate-400 text-sm font-medium flex flex-col items-center justify-center gap-2">
-            <div className="w-6 h-6 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin"></div>
-            Menyelaraskan data jadwal jemaat...
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-slate-200 py-20 text-center text-slate-400 text-sm font-medium shadow-sm">
-            📭 Belum ada jadwal ibadah yang dipublikasikan.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {filtered.map(row => (
-              <div 
-                key={row.id}
-                onClick={() => setSelectedJadwal(row)}
-                className="bg-white border border-slate-200/70 hover:border-blue-400 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs hover:shadow-lg transition-all duration-300 cursor-pointer group"
-              >
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${getBadgeStyle(getStringValue(row.jenis))}`}>
-                      {getStringValue(row.jenis)}
-                    </span>
-                    <span className="text-xs text-slate-400 font-medium">📍 {getStringValue(row.lokasi) || 'Gereja'}</span>
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-lg tracking-tight group-hover:text-blue-600 transition-colors">{getStringValue(row.judul) || 'Tanpa Tema'}</h3>
-                  <p className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
-                    📅 {formatJadwalDate(row.tanggal_mulai)}
-                  </p>
-                </div>
-                <div className="w-full sm:w-auto flex justify-end items-center text-xs font-bold text-blue-600 group-hover:translate-x-1 transition-transform shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
-                  Lihat Susunan Petugas ➜
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
-
-      {/* ─── MODAL DETAIL: SUSUNAN PETUGAS IBADAH (PREMIUM VIEW) ─── */}
+      {/* ─── MODAL DETAIL VIEW ─── */}
       {selectedJadwal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl w-full max-w-2xl flex flex-col p-6 shadow-2xl border border-slate-100 my-8 transform transition-all">
             
-            {/* Header Modal */}
             <div className="flex justify-between items-start gap-4 mb-5 pb-4 border-b border-slate-100">
               <div>
                 <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-widest ${getBadgeStyle(selectedJadwal.jenis)}`}>
@@ -185,7 +203,6 @@ export default function PublicJadwalPage() {
               </button>
             </div>
 
-            {/* Susunan Acara & Petugas Grid */}
             <div className="space-y-5 overflow-y-auto max-h-[60vh] pr-2 scrollbar-thin text-left">
               {selectedJadwal.deskripsi && (
                 <div className="bg-blue-50/50 border border-blue-100/70 rounded-xl p-3.5 text-xs text-slate-700 font-medium">
@@ -193,7 +210,7 @@ export default function PublicJadwalPage() {
                 </div>
               )}
 
-              {/* Sesi I: Sekolah Sabat */}
+              {/* Sesi I */}
               <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 space-y-3">
                 <div className="flex items-center gap-2 pb-1.5 border-b border-slate-200/60">
                   <span className="text-sm">🌅</span>
@@ -216,7 +233,7 @@ export default function PublicJadwalPage() {
                 </div>
               </div>
 
-              {/* Sesi II: Kebaktian Utama */}
+              {/* Sesi II */}
               <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-2xs">
                 <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100">
                   <span className="text-sm">📖</span>
@@ -239,7 +256,6 @@ export default function PublicJadwalPage() {
               </div>
             </div>
 
-            {/* Footer Modal */}
             <div className="pt-4 border-t border-slate-100 mt-5 flex justify-end">
               <button 
                 onClick={() => setSelectedJadwal(null)} 
