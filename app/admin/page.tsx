@@ -11,7 +11,7 @@ type JadwalRow = {
   tanggal_mulai: string;
   tanggal_selesai: string | null;
   lokasi: string | null;
-  jenis: any; // Dibuat any agar aman jika berupa objek relasi
+  jenis: any; 
   deskripsi: string | null;
   ss_mc: any;
   ss_doa_buka: any;
@@ -59,7 +59,7 @@ const INITIAL_FORM: FormState = {
   pianis: '',
 };
 
-// ─── Helper Pengecek Objek (Kunci Anti-Crash) ─────────────────────────────────
+// ─── Helpers Anti-Crash ───────────────────────────────────────────────────────
 
 function getStringValue(val: any): string {
   if (!val) return '';
@@ -67,6 +67,15 @@ function getStringValue(val: any): string {
     return val.nama || val.name || val.judul || JSON.stringify(val);
   }
   return String(val);
+}
+
+function getSafeDateString(isoString: any): string {
+  if (!isoString || typeof isoString !== 'string') return '';
+  try {
+    return isoString.substring(0, 16);
+  } catch {
+    return '';
+  }
 }
 
 // ─── Main Admin Component ─────────────────────────────────────────────────────
@@ -146,13 +155,24 @@ export default function AdminPage() {
       </main>
 
       {showAdd && (
-        <AddModal onClose={() => setShowAdd(false)} onAdded={row => setJadwals(p => [row, ...p])} />
+        <AddModal 
+          onClose={() => setShowAdd(false)} 
+          onAdded={row => setJadwals(p => {
+            const barusan = [row, ...p];
+            // Diurutkan dari yang paling baru (descending) dengan proteksi nilai null
+            return barusan.sort((a, b) => {
+              const tA = a.tanggal_mulai || '';
+              const tB = b.tanggal_mulai || '';
+              return tB.localeCompare(tA);
+            });
+          })} 
+        />
       )}
     </div>
   );
 }
 
-// ─── Card Component (Sudah Diperbaiki Total) ─────────────────────────────────
+// ─── Card Component ───────────────────────────────────────────────────────────
 
 function JadwalCard({ row, onUpdated, onDeleted }: { row: JadwalRow; onUpdated: (r: JadwalRow) => void; onDeleted: (id: string) => void }) {
   const [showEdit, setShowEdit] = useState(false);
@@ -215,7 +235,7 @@ function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState
         </div>
         <div>
           <label className="text-[10px] font-bold text-slate-500 uppercase">Tanggal & Waktu</label>
-          <input type="datetime-local" required value={form.tanggal_mulai ? form.tanggal_mulai.substring(0,16) : ''} onChange={e => upd('tanggal_mulai', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl" />
+          <input type="datetime-local" required value={getSafeDateString(form.tanggal_mulai)} onChange={e => upd('tanggal_mulai', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl" />
         </div>
         <div className="sm:col-span-2">
           <label className="text-[10px] font-bold text-slate-500 uppercase">Lokasi</label>
