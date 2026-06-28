@@ -13,14 +13,12 @@ type JadwalRow = {
   lokasi: string | null;
   jenis: string;
   deskripsi: string | null;
-  // Sekolah Sabat
   ss_mc: string | null;
   ss_doa_buka: string | null;
   ss_diskusi: string | null;
   ss_mission: string | null;
   ss_pp_doa: string | null;
   ss_persembahan: string | null;
-  // Khotbah Utama
   khotbah_lagu_pujian: string | null;
   khotbah_bacaan_persembahan: string | null;
   khotbah_mc: string | null;
@@ -31,7 +29,7 @@ type JadwalRow = {
 
 type FormState = Omit<JadwalRow, 'id'>;
 
-// ─── Constants (Sesuai dengan Database Supabase) ──────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const JENIS_OPTIONS = [
   { value: 'Kebaktian Utama', label: 'Kebaktian Utama' },
@@ -91,14 +89,14 @@ export default function AdminPage() {
     loadData();
   }, [loadData]);
 
-  const filtered = jadwals.filter(j => 
-    j.judul.toLowerCase().includes(search.toLowerCase()) ||
-    j.jenis.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = jadwals.filter(j => {
+    const titleMatch = j.judul ? j.judul.toLowerCase().includes(search.toLowerCase()) : false;
+    const typeMatch = j.jenis ? j.jenis.toLowerCase().includes(search.toLowerCase()) : false;
+    return titleMatch || typeMatch;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 antialiased font-sans pb-12">
-      {/* Admin Header */}
       <header className="bg-slate-900 text-white shadow-md">
         <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
@@ -116,7 +114,6 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* Main Bar */}
       <main className="max-w-5xl mx-auto px-4 mt-8 space-y-6">
         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
           <span className="text-slate-400 text-sm pl-1">🔍</span>
@@ -175,7 +172,7 @@ function JadwalCard({ row, onUpdated, onDeleted }: { row: JadwalRow; onUpdated: 
   const [delLoading, setDelLoading] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm(`Hapus jadwal "${row.judul}"? Aksi ini permanen.`)) return;
+    if (!confirm(`Hapus jadwal "${row.judul || 'Tanpa Judul'}"? Aksi ini permanen.`)) return;
     setDelLoading(true);
     try {
       const { error } = await supabase.from('jadwal_ibadah').delete().eq('id', row.id);
@@ -192,12 +189,12 @@ function JadwalCard({ row, onUpdated, onDeleted }: { row: JadwalRow; onUpdated: 
     <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
       <div>
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-bold text-slate-900 text-base">{row.judul}</h3>
+          <h3 className="font-bold text-slate-900 text-base">{row.judul || 'Tanpa Judul'}</h3>
           <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md uppercase">
-            {row.jenis}
+            {row.jenis || 'Ibadah'}
           </span>
         </div>
-        <p className="text-xs text-slate-400 mt-1 font-medium">🕒 {new Date(row.tanggal_mulai).toLocaleString('id-ID')}</p>
+        <p className="text-xs text-slate-400 mt-1 font-medium">🕒 {row.tanggal_mulai ? new Date(row.tanggal_mulai).toLocaleString('id-ID') : '─'}</p>
       </div>
       <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
         <button onClick={() => setShowEdit(true)}
@@ -222,18 +219,17 @@ function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState
 
   return (
     <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
-      {/* Group Utama */}
       <div className="space-y-4">
         <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">📌 Informasi Utama Acara</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
             <label className="block text-[10px] font-bold text-slate-500 uppercase">Judul Acara / Kebaktian</label>
-            <input type="text" required value={form.judul} onChange={e => upd('judul', e.target.value)}
+            <input type="text" required value={form.judul || ''} onChange={e => upd('judul', e.target.value)}
               className="w-full mt-1 px-3 py-2 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500/20" />
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase">Kategori Acara</label>
-            <select value={form.jenis} onChange={e => upd('jenis', e.target.value)}
+            <select value={form.jenis || 'Kebaktian Utama'} onChange={e => upd('jenis', e.target.value)}
               className="w-full mt-1 px-3 py-2 text-sm border rounded-xl bg-white">
               {JENIS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -256,7 +252,6 @@ function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState
         </div>
       </div>
 
-      {/* Sesi I: Sekolah Sabat */}
       <div className="space-y-4 border-t border-slate-100 pt-5">
         <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">🌅 Sesi I: Sekolah Sabat</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -287,7 +282,6 @@ function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState
         </div>
       </div>
 
-      {/* Sesi II: Kebaktian Utama */}
       <div className="space-y-4 border-t border-slate-100 pt-5">
         <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">📖 Sesi II: Kebaktian Utama</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

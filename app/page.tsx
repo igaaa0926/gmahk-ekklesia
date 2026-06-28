@@ -47,17 +47,23 @@ const KHOTBAH_ROLES: { key: keyof JadwalRow; label: string }[] = [
   { key: 'pianis',                     label: 'Pianis' },
 ];
 
+// Pemetaan label untuk database lama dan baru agar aman 100%
 const JENIS_LABEL: Record<string, string> = {
   'Kebaktian Utama': 'Kebaktian Utama',
   'Sabat Sekolah': 'Sabat Sekolah',
   'Rabu Malam': 'Rabu Malam',
   'Vesper': 'Ibadah Vesper',
+  'ibadah_umum': 'Kebaktian Utama',
+  'doa': 'Ibadah Doa',
+  'pemuda': 'Pemuda',
+  'anak': 'Sekolah Sabat Anak'
 };
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 function fmtTanggal(isoString: string) {
   try {
+    if (!isoString) return '─';
     const d = new Date(isoString);
     return d.toLocaleDateString('id-ID', {
       weekday: 'long',
@@ -68,7 +74,7 @@ function fmtTanggal(isoString: string) {
       minute: '2-digit',
     });
   } catch {
-    return isoString;
+    return isoString || '─';
   }
 }
 
@@ -125,7 +131,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased pb-16">
-      {/* Hero Header */}
       <header className="bg-[#1a3a6e] text-white py-12 px-4 shadow-md text-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/30 pointer-events-none" />
         <div className="relative z-10 max-w-2xl mx-auto space-y-2">
@@ -150,15 +155,14 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {/* Sisi Kiri: Detail Jadwal Terpilih (2 Sesi) */}
             <div className="md:col-span-2 space-y-6">
               {selected && (
                 <div className="bg-white border border-slate-200/80 rounded-3xl shadow-xs overflow-hidden p-6 sm:p-8 space-y-6">
                   <div>
                     <span className="inline-block text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-md uppercase mb-2">
-                      {JENIS_LABEL[selected.jenis] ?? selected.jenis}
+                      {selected.jenis ? (JENIS_LABEL[selected.jenis] || selected.jenis) : 'Ibadah'}
                     </span>
-                    <h2 className="text-xl font-black text-slate-900 leading-tight uppercase">{selected.judul}</h2>
+                    <h2 className="text-xl font-black text-slate-900 leading-tight uppercase">{selected.judul || 'Tanpa Judul'}</h2>
                     <p className="text-slate-400 text-xs font-medium mt-1">{fmtTanggal(selected.tanggal_mulai)}</p>
                     {selected.lokasi && (
                       <p className="text-slate-500 text-xs mt-1 font-semibold flex items-center gap-1">
@@ -173,7 +177,6 @@ export default function HomePage() {
                     </div>
                   )}
 
-                  {/* Sesi I: Sekolah Sabat */}
                   <div className="bg-gradient-to-b from-slate-50/50 to-slate-50 rounded-2xl border border-slate-200/60 p-5 space-y-4">
                     <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-slate-200/60">
                       <span className="text-base">🌅</span> Sesi I: Sekolah Sabat
@@ -185,7 +188,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Sesi II: Khotbah */}
                   <div className="bg-gradient-to-b from-slate-50/50 to-slate-50 rounded-2xl border border-slate-200/60 p-5 space-y-4">
                     <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-slate-200/60">
                       <span className="text-base">📖</span> Sesi II: Kebaktian Utama
@@ -200,7 +202,6 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Sisi Kanan: Daftar Histori/Arsip Jadwal Lain */}
             <div className="space-y-4">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
                 Arsip Jadwal Pekanan
@@ -213,14 +214,14 @@ export default function HomePage() {
                         ? 'bg-[#1a3a6e] border-[#1a3a6e] text-white shadow-sm'
                         : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'}`}>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate leading-snug">{j.judul}</p>
+                      <p className="text-sm font-semibold truncate leading-snug">{j.judul || 'Tanpa Judul'}</p>
                       <p className={`text-xs mt-0.5 ${selected?.id === j.id ? 'text-blue-200' : 'text-slate-400'}`}>
                         {fmtTanggal(j.tanggal_mulai)}
                       </p>
                     </div>
                     <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full
                       ${selected?.id === j.id ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                      {JENIS_LABEL[j.jenis] ?? j.jenis}
+                      {j.jenis ? (JENIS_LABEL[j.jenis] || j.jenis) : 'Ibadah'}
                     </span>
                   </button>
                 ))}
