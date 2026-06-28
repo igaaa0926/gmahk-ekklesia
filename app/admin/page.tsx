@@ -38,12 +38,12 @@ function getSafeDateString(isoString: any): string {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function AdminPage() {
-  const [session, setSession] = useState<any>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // State Form Login Internal (Bebas Input Username Tanpa Paksa Email)
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // State Form Login Internal (.env.local Matcher)
+  const [usernameInput, setUsernameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
   const [loginErr, setLoginErr] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
 
@@ -51,23 +51,19 @@ export default function AdminPage() {
   const [jadwals, setJadwals] = useState<JadwalRow[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [fetchErr, setFetchErr] = useState('');
   const [showAdd, setShowAdd] = useState(false);
 
+  // Periksa status login dari localStorage saat pertama kali halaman dimuat
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthLoading(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-    return () => subscription.unsubscribe();
+    const localStatus = localStorage.getItem('admin_authenticated');
+    if (localStatus === 'true') {
+      setIsLoggedIn(true);
+    }
+    setAuthLoading(false);
   }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    setFetchErr('');
     try {
       const { data, error } = await supabase
         .from('jadwal_ibadah')
@@ -76,33 +72,48 @@ export default function AdminPage() {
       if (error) throw error;
       setJadwals(data || []);
     } catch (err: any) {
-      setFetchErr(err.message || 'Gagal memuat data');
+      console.error(err.message || 'Gagal memuat data');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (session) loadData();
-  }, [session, loadData]);
+    if (isLoggedIn) loadData();
+  }, [isLoggedIn, loadData]);
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
+  const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginLoading(true);
     setLoginErr('');
-    
-    // Mengirim data login ke Supabase auth
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setLoginErr(error.message);
+
+    // Ambil data kredensial dari variabel .env.local
+    const expectedUsername = process.env.NEXT_PUBLIC_ADMIN_USERNAME;
+    const expectedPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
+
+    // COCOKKAN SECARA LOKAL
+    if (usernameInput === expectedUsername && passwordInput === expectedPassword) {
+      localStorage.setItem('admin_authenticated', 'true');
+      setIsLoggedIn(true);
+    } else {
+      setLoginErr('Username atau Password yang kamu masukkan salah!');
+    }
     setLoginLoading(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin_authenticated');
+    setIsLoggedIn(false);
+    setUsernameInput('');
+    setPasswordInput('');
   };
 
   if (authLoading) {
     return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-xs font-bold tracking-wider animate-pulse">MEMERIKSA OTORISASI...</div>;
   }
 
-  // 🔒 TAMPILAN LOGIN JIKA BELUM AUTENTIKASI
-  if (!session) {
+  // 🔒 TAMPILAN LOGIN JIKA BELUM AUTENTIKASI LOKAL
+  if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border">
@@ -111,13 +122,12 @@ export default function AdminPage() {
           {loginErr && <div className="mb-4 p-3 text-xs bg-red-50 text-red-600 rounded-xl font-medium">{loginErr}</div>}
           <form onSubmit={handleLoginSubmit} className="space-y-4 text-left">
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Email / Username</label>
-              {/* type diubah menjadi "text" agar tidak memunculkan validasi email paksa dari browser */}
-              <input type="text" required value={email} onChange={e => setEmail(e.target.value)} className="w-full mt-1 px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Username</label>
+              <input type="text" required value={usernameInput} onChange={e => setUsernameInput(e.target.value)} className="w-full mt-1 px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900" />
             </div>
             <div>
               <label className="text-[10px] font-bold text-slate-500 uppercase">Password</label>
-              <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full mt-1 px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              <input type="password" required value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="w-full mt-1 px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900" />
             </div>
             <button type="submit" disabled={loginLoading} className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer disabled:opacity-50">
               {loginLoading ? 'Memproses...' : 'Masuk Panel Admin'}
@@ -128,7 +138,7 @@ export default function AdminPage() {
     );
   }
 
-  // 🔓 PANEL UTAMA ADMIN JIKA SUDAH LOGIN
+  // 🔓 PANEL UTAMA ADMIN JIKA USERNAME & PASSWORD COCOK
   const filtered = jadwals.filter(j => {
     if (!j) return false;
     const s = search.toLowerCase().trim();
@@ -144,7 +154,7 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button onClick={() => setShowAdd(true)} className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer">➕ Tambah Jadwal</button>
-            <button onClick={() => supabase.auth.signOut()} className="px-4 py-2.5 bg-slate-800 hover:bg-red-600 text-white text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer">🚪 Keluar</button>
+            <button onClick={handleLogout} className="px-4 py-2.5 bg-slate-800 hover:bg-red-600 text-white text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer">🚪 Keluar</button>
           </div>
         </div>
       </header>
