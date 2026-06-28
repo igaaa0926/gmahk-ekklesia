@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation'; // Diimport untuk me-redirect user jika belum login
 import { supabase } from '@/lib/supabase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ const INITIAL_FORM: FormState = {
   pianis: '',
 };
 
-// ─── Helpers Anti-Crash (Jaminan String Aman) ─────────────────────────────────
+// ─── Helpers Anti-Crash ───────────────────────────────────────────────────────
 
 function getStringValue(val: any): string {
   if (val === null || val === undefined) return '';
@@ -82,11 +83,27 @@ function getSafeDateString(isoString: any): string {
 // ─── Main Admin Component ─────────────────────────────────────────────────────
 
 export default function AdminPage() {
+  const router = useRouter();
+  const [authLoading, setAuthLoading] = useState(true); // State pengecek status login
   const [jadwals, setJadwals] = useState<JadwalRow[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [fetchErr, setFetchErr] = useState('');
   const [showAdd, setShowAdd] = useState(false);
+
+  // 🛡️ Fungsi Gerbang Pengaman Login (Wajib Login dulu)
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Jika tidak ada sesi login, paksa pindah ke halaman login
+        router.push('/login'); 
+      } else {
+        setAuthLoading(false); // Sesi ditemukan, izinkan melihat dashboard
+      }
+    };
+    checkUser();
+  }, [router]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -106,11 +123,19 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!authLoading) {
+      loadData();
+    }
+  }, [authLoading, loadData]);
 
-  // Logika penyaringan pencarian yang aman dari properti null
+  // Fungsi Log Out Manual
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
+
   const filtered = jadwals.filter(j => {
+    if (!j) return false;
     const searchStr = (search || '').toLowerCase().trim();
     if (!searchStr) return true;
 
@@ -120,17 +145,34 @@ export default function AdminPage() {
     return judulStr.includes(searchStr) || jenisStr.includes(searchStr);
   });
 
+  // Jika sistem sedang memeriksa status login, tampilkan layar loading pelindung
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-sm font-semibold tracking-wider animate-pulse">
+        Memeriksa Otorisasi Admin...
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 antialiased font-sans pb-12">
       <header className="bg-slate-900 text-white shadow-md">
         <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
+          <div className="flex items-center gap-4 justify-between w-full sm:w-auto">
             <h1 className="text-xl font-black tracking-tight uppercase">Manajemen Jadwal Jemaat</h1>
+            <button onClick={handleLogout} className="sm:hidden px-3 py-1.5 bg-red-600 hover:bg-red-700 text-[10px] font-bold rounded-lg uppercase tracking-wider cursor-pointer">
+              🚪 Keluar
+            </button>
           </div>
-          <button onClick={() => setShowAdd(true)}
-            className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition cursor-pointer">
-            ➕ Tambah Jadwal Baru
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button onClick={() => setShowAdd(true)}
+              className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition cursor-pointer">
+              ➕ Tambah Jadwal Baru
+            </button>
+            <button onClick={handleLogout} className="hidden sm:block px-4 py-2.5 bg-slate-800 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition cursor-pointer">
+              🚪 Log Out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -150,10 +192,12 @@ export default function AdminPage() {
         ) : (
           <div className="space-y-3">
             {filtered.map(row => (
-              <JadwalCard key={row.id} row={row}
-                onUpdated={updated => setJadwals(p => p.map(j => j.id === updated.id ? updated : j))}
-                onDeleted={id => setJadwals(p => p.filter(j => j.id !== id))}
-              />
+              row && row.id && (
+                <JadwalCard key={row.id} row={row}
+                  onUpdated={updated => setJadwals(p => p.map(j => (j && j.id === updated?.id) ? updated : j))}
+                  onDeleted={id => setJadwals(p => p.filter(j => j && j.id !== id))}
+                />
+              )
             ))}
           </div>
         )}
@@ -163,10 +207,10 @@ export default function AdminPage() {
         <AddModal 
           onClose={() => setShowAdd(false)} 
           onAdded={row => setJadwals(p => {
-            const barusan = [row, ...p];
+            const barusan = [row, ...p].filter(Boolean);
             return barusan.sort((a, b) => {
-              const tA = a.tanggal_mulai || '';
-              const tB = b.tanggal_mulai || '';
+              const tA = a?.tanggal_mulai || '';
+              const tB = b?.tanggal_mulai || '';
               return tB.localeCompare(tA);
             });
           })} 
@@ -181,6 +225,8 @@ export default function AdminPage() {
 function JadwalCard({ row, onUpdated, onDeleted }: { row: JadwalRow; onUpdated: (r: JadwalRow) => void; onDeleted: (id: string) => void }) {
   const [showEdit, setShowEdit] = useState(false);
   const [delLoading, setDelLoading] = useState(false);
+
+  if (!row || !row.id) return null;
 
   const handleDelete = async () => {
     const judulTeks = getStringValue(row.judul) || 'Tanpa Judul';
@@ -222,6 +268,7 @@ function JadwalCard({ row, onUpdated, onDeleted }: { row: JadwalRow; onUpdated: 
 // ─── Form Fields Component ───────────────────────────────────────────────────
 
 function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
+  if (!form) return null;
   const upd = (key: keyof FormState, val: any) => setForm({ ...form, [key]: val === '' ? null : val });
 
   return (
@@ -334,6 +381,7 @@ function EditModal({ row, onClose, onUpdated }: { row: JadwalRow; onClose: () =>
     e.preventDefault();
     setSaving(true);
     try {
+      if (!row?.id) throw new Error("ID Jadwal tidak ditemukan");
       const { data, error } = await supabase.from('jadwal_ibadah').update(form).eq('id', row.id).select();
       if (error) throw error;
       if (data && data[0]) onUpdated(data[0]);
