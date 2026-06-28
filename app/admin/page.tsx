@@ -123,11 +123,13 @@ export default function AdminPage() {
           <form onSubmit={handleLoginSubmit} className="space-y-4 text-left">
             <div>
               <label className="text-[10px] font-bold text-slate-500 uppercase">Username</label>
-              <input type="text" required value={usernameInput} onChange={e => setUsernameInput(e.target.value)} className="w-full mt-1 px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              {/* text-black ditambahkan di sini agar font saat mengetik berwarna hitam */}
+              <input type="text" required value={usernameInput} onChange={e => setUsernameInput(e.target.value)} className="w-full mt-1 px-4 py-2.5 text-sm border rounded-xl bg-white text-black font-medium focus:outline-none focus:ring-2 focus:ring-slate-900" />
             </div>
             <div>
               <label className="text-[10px] font-bold text-slate-500 uppercase">Password</label>
-              <input type="password" required value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="w-full mt-1 px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              {/* text-black ditambahkan di sini agar font saat mengetik berwarna hitam */}
+              <input type="password" required value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="w-full mt-1 px-4 py-2.5 text-sm border rounded-xl bg-white text-black font-medium focus:outline-none focus:ring-2 focus:ring-slate-900" />
             </div>
             <button type="submit" disabled={loginLoading} className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer disabled:opacity-50">
               {loginLoading ? 'Memproses...' : 'Masuk Panel Admin'}
@@ -162,7 +164,7 @@ export default function AdminPage() {
       <main className="max-w-5xl mx-auto px-4 mt-8 space-y-6">
         <div className="bg-white rounded-2xl border p-4 shadow-xs flex items-center gap-3">
           <span className="text-slate-400 text-sm pl-1">🔍</span>
-          <input type="text" placeholder="Cari jadwal..." value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-transparent border-0 text-sm font-medium focus:outline-none" />
+          <input type="text" placeholder="Cari jadwal..." value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-transparent border-0 text-sm font-medium text-black focus:outline-none" />
         </div>
 
         {loading ? (
@@ -224,17 +226,17 @@ function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState
   return (
     <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 text-left">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="sm:col-span-2"><label className="text-[10px] font-bold text-slate-500 uppercase">Judul Acara</label><input type="text" required value={getStringValue(form.judul)} onChange={e => upd('judul', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl" /></div>
-        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Kategori</label><select value={getStringValue(form.jenis)} onChange={e => upd('jenis', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl bg-white">{JENIS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
-        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Tanggal & Waktu</label><input type="datetime-local" required value={getSafeDateString(form.tanggal_mulai)} onChange={e => upd('tanggal_mulai', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl" /></div>
-        <div className="sm:col-span-2"><label className="text-[10px] font-bold text-slate-500 uppercase">Lokasi</label><input type="text" value={getStringValue(form.lokasi)} onChange={e => upd('lokasi', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl" /></div>
-        <div className="sm:col-span-2"><label className="text-[10px] font-bold text-slate-500 uppercase">Deskripsi</label><textarea value={getStringValue(form.deskripsi)} onChange={e => upd('deskripsi', e.target.value)} rows={2} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl resize-none" /></div>
+        <div className="sm:col-span-2"><label className="text-[10px] font-bold text-slate-500 uppercase">Judul Acara</label><input type="text" required value={getStringValue(form.judul)} onChange={e => upd('judul', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl text-black" /></div>
+        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Kategori</label><select value={getStringValue(form.jenis)} onChange={e => upd('jenis', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl bg-white text-black">{JENIS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
+        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Tanggal & Waktu</label><input type="datetime-local" required value={getSafeDateString(form.tanggal_mulai)} onChange={e => upd('tanggal_mulai', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl text-black" /></div>
+        <div className="sm:col-span-2"><label className="text-[10px] font-bold text-slate-500 uppercase">Lokasi</label><input type="text" value={getStringValue(form.lokasi)} onChange={e => upd('lokasi', e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl text-black" /></div>
+        <div className="sm:col-span-2"><label className="text-[10px] font-bold text-slate-500 uppercase">Deskripsi</label><textarea value={getStringValue(form.deskripsi)} onChange={e => upd('deskripsi', e.target.value)} rows={2} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl resize-none text-black" /></div>
       </div>
       <div className="space-y-3 pt-4 border-t">
         <h4 className="text-xs font-bold uppercase text-slate-900">🌅 Sesi I: Sekolah Sabat</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[{ k: 'ss_mc', l: 'MC / Protokol' }, { k: 'ss_doa_buka', l: 'Doa Buka' }, { k: 'ss_diskusi', l: 'Diskusi SS / Guru' }, { k: 'ss_mission', l: 'Cerita Mission' }, { k: 'ss_pp_doa', l: 'PP & Doa' }, { k: 'ss_persembahan', l: 'Ambil Persembahan' }].map(i => (
-            <div key={i.k}><label className="text-[10px] font-bold text-slate-400 uppercase">{i.l}</label><input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl" /></div>
+            <div key={i.k}><label className="text-[10px] font-bold text-slate-400 uppercase">{i.l}</label><input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl text-black" /></div>
           ))}
         </div>
       </div>
@@ -242,7 +244,7 @@ function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState
         <h4 className="text-xs font-bold uppercase text-slate-900">📖 Sesi II: Kebaktian Utama</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[{ k: 'khotbah_lagu_pujian', l: 'Lagu Pujian' }, { k: 'khotbah_bacaan_persembahan', l: 'Bacaan Persembahan' }, { k: 'khotbah_mc', l: 'MC / Pemimpin Jemaat' }, { k: 'khotbah_cerita_anak', l: 'Cerita Anak' }, { k: 'pembawa_firman', l: 'Khotbah' }, { k: 'pianis', l: 'Pianis' }].map(i => (
-            <div key={i.k}><label className="text-[10px] font-bold text-slate-400 uppercase">{i.l}</label><input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl" /></div>
+            <div key={i.k}><label className="text-[10px] font-bold text-slate-400 uppercase">{i.l}</label><input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border rounded-xl text-black" /></div>
           ))}
         </div>
       </div>
@@ -265,7 +267,7 @@ function AddModal({ onClose, onAdded }: { onClose: () => void; onAdded: (r: Jadw
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl w-full max-w-2xl flex flex-col p-6 shadow-xl border">
-        <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-sm uppercase">➕ Tambah Jadwal</h3><button onClick={onClose} className="cursor-pointer">✕</button></div>
+        <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-sm uppercase text-black">➕ Tambah Jadwal</h3><button onClick={onClose} className="cursor-pointer text-black">✕</button></div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormFields form={form} setForm={setForm} />
           <button type="submit" disabled={saving} className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-bold uppercase text-xs cursor-pointer">{saving ? 'Menyimpan...' : '💾 Simpan'}</button>
@@ -290,7 +292,7 @@ function EditModal({ row, onClose, onUpdated }: { row: JadwalRow; onClose: () =>
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl w-full max-w-2xl flex flex-col p-6 shadow-xl border">
-        <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-sm uppercase">✏️ Edit Jadwal</h3><button onClick={onClose} className="cursor-pointer">✕</button></div>
+        <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-sm uppercase text-black">✏️ Edit Jadwal</h3><button onClick={onClose} className="cursor-pointer text-black">✕</button></div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormFields form={form} setForm={setForm} />
           <button type="submit" disabled={saving} className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-bold uppercase text-xs cursor-pointer">{saving ? 'Memperbarui...' : '💾 Simpan Perubahan'}</button>
