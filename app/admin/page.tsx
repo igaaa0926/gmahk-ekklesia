@@ -158,7 +158,11 @@ export default function AdminPage() {
       {showAdd && (
         <AddModal
           onClose={() => setShowAdd(false)}
-          onAdded={row => setJadwals(p => [...p, row].sort((a, b) => b.tanggal_mulai.localeCompare(a.tanggal_mulai)))}
+          onAdded={row => setJadwals(p => [...p, row].sort((a, b) => {
+            const dateA = a.tanggal_mulai || '';
+            const dateB = b.tanggal_mulai || '';
+            return dateB.localeCompare(dateA);
+          }))}
         />
       )}
     </div>
@@ -194,7 +198,7 @@ function JadwalCard({ row, onUpdated, onDeleted }: { row: JadwalRow; onUpdated: 
             {row.jenis || 'Ibadah'}
           </span>
         </div>
-        <p className="text-xs text-slate-400 mt-1 font-medium">🕒 {row.tanggal_mulai ? new Date(row.tanggal_mulai).toLocaleString('id-ID') : '─'}</p>
+        <p className="text-xs text-slate-400 mt-1 font-medium">🕒 {row.tanggal_mulai ? new Date(row.tanggal_mulai).toLocaleString('id-ID') : 'Waktu belum diatur'}</p>
       </div>
       <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
         <button onClick={() => setShowEdit(true)}
@@ -217,6 +221,16 @@ function JadwalCard({ row, onUpdated, onDeleted }: { row: JadwalRow; onUpdated: 
 function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
   const upd = (key: keyof FormState, val: any) => setForm({ ...form, [key]: val === '' ? null : val });
 
+  // Ambil substring tanggal dengan proteksi string kosong / null
+  const getSafeDateString = (isoString: string | null | undefined) => {
+    if (!isoString) return '';
+    try {
+      return isoString.substring(0, 16);
+    } catch {
+      return '';
+    }
+  };
+
   return (
     <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
       <div className="space-y-4">
@@ -236,7 +250,7 @@ function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase">Waktu & Tanggal Mulai</label>
-            <input type="datetime-local" required value={form.tanggal_mulai ? form.tanggal_mulai.substring(0,16) : ''} onChange={e => upd('tanggal_mulai', e.target.value)}
+            <input type="datetime-local" required value={getSafeDateString(form.tanggal_mulai)} onChange={e => upd('tanggal_mulai', e.target.value)}
               className="w-full mt-1 px-3 py-2 text-sm border rounded-xl" />
           </div>
           <div className="sm:col-span-2">

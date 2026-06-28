@@ -47,7 +47,6 @@ const KHOTBAH_ROLES: { key: keyof JadwalRow; label: string }[] = [
   { key: 'pianis',                     label: 'Pianis' },
 ];
 
-// Pemetaan label untuk database lama dan baru agar aman 100%
 const JENIS_LABEL: Record<string, string> = {
   'Kebaktian Utama': 'Kebaktian Utama',
   'Sabat Sekolah': 'Sabat Sekolah',
@@ -59,12 +58,15 @@ const JENIS_LABEL: Record<string, string> = {
   'anak': 'Sekolah Sabat Anak'
 };
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+// ─── Helper Aman Pemformatan Tanggal ──────────────────────────────────────────
 
-function fmtTanggal(isoString: string) {
+function fmtTanggal(isoString: string | null | undefined) {
+  if (!isoString) return '🕒 Waktu Belum Diatur';
   try {
-    if (!isoString) return '─';
     const d = new Date(isoString);
+    // Jika tanggal tidak valid, kembalikan string mentah
+    if (isNaN(d.getTime())) return isoString;
+    
     return d.toLocaleDateString('id-ID', {
       weekday: 'long',
       day: 'numeric',
@@ -74,7 +76,7 @@ function fmtTanggal(isoString: string) {
       minute: '2-digit',
     });
   } catch {
-    return isoString || '─';
+    return String(isoString || '─');
   }
 }
 
@@ -131,6 +133,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased pb-16">
+      {/* Hero Header */}
       <header className="bg-[#1a3a6e] text-white py-12 px-4 shadow-md text-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/30 pointer-events-none" />
         <div className="relative z-10 max-w-2xl mx-auto space-y-2">
@@ -155,6 +158,7 @@ export default function HomePage() {
           </div>
         ) : (
           <>
+            {/* Detail Utama (Kiri) */}
             <div className="md:col-span-2 space-y-6">
               {selected && (
                 <div className="bg-white border border-slate-200/80 rounded-3xl shadow-xs overflow-hidden p-6 sm:p-8 space-y-6">
@@ -163,7 +167,7 @@ export default function HomePage() {
                       {selected.jenis ? (JENIS_LABEL[selected.jenis] || selected.jenis) : 'Ibadah'}
                     </span>
                     <h2 className="text-xl font-black text-slate-900 leading-tight uppercase">{selected.judul || 'Tanpa Judul'}</h2>
-                    <p className="text-slate-400 text-xs font-medium mt-1">{fmtTanggal(selected.tanggal_mulai)}</p>
+                    <p className="text-slate-400 text-xs font-medium mt-1">🕒 {fmtTanggal(selected.tanggal_mulai)}</p>
                     {selected.lokasi && (
                       <p className="text-slate-500 text-xs mt-1 font-semibold flex items-center gap-1">
                         📍 {selected.lokasi}
@@ -177,6 +181,7 @@ export default function HomePage() {
                     </div>
                   )}
 
+                  {/* Sesi I */}
                   <div className="bg-gradient-to-b from-slate-50/50 to-slate-50 rounded-2xl border border-slate-200/60 p-5 space-y-4">
                     <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-slate-200/60">
                       <span className="text-base">🌅</span> Sesi I: Sekolah Sabat
@@ -188,6 +193,7 @@ export default function HomePage() {
                     </div>
                   </div>
 
+                  {/* Sesi II */}
                   <div className="bg-gradient-to-b from-slate-50/50 to-slate-50 rounded-2xl border border-slate-200/60 p-5 space-y-4">
                     <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-slate-200/60">
                       <span className="text-base">📖</span> Sesi II: Kebaktian Utama
@@ -202,6 +208,7 @@ export default function HomePage() {
               )}
             </div>
 
+            {/* Arsip Samping (Kanan) */}
             <div className="space-y-4">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
                 Arsip Jadwal Pekanan
