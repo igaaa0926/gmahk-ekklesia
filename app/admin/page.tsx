@@ -59,12 +59,13 @@ const INITIAL_FORM: FormState = {
   pianis: '',
 };
 
-// ─── Helpers Anti-Crash ───────────────────────────────────────────────────────
+// ─── Helpers Anti-Crash (Jaminan String Aman) ─────────────────────────────────
 
 function getStringValue(val: any): string {
-  if (!val) return '';
+  if (val === null || val === undefined) return '';
   if (typeof val === 'object') {
-    return val.nama || val.name || val.judul || JSON.stringify(val);
+    const extracted = val.nama || val.name || val.judul || '';
+    return extracted ? String(extracted) : '';
   }
   return String(val);
 }
@@ -108,10 +109,14 @@ export default function AdminPage() {
     loadData();
   }, [loadData]);
 
+  // Logika penyaringan pencarian yang aman dari properti null
   const filtered = jadwals.filter(j => {
+    const searchStr = (search || '').toLowerCase().trim();
+    if (!searchStr) return true;
+
     const judulStr = getStringValue(j.judul).toLowerCase();
     const jenisStr = getStringValue(j.jenis).toLowerCase();
-    const searchStr = search.toLowerCase();
+
     return judulStr.includes(searchStr) || jenisStr.includes(searchStr);
   });
 
@@ -159,7 +164,6 @@ export default function AdminPage() {
           onClose={() => setShowAdd(false)} 
           onAdded={row => setJadwals(p => {
             const barusan = [row, ...p];
-            // Diurutkan dari yang paling baru (descending) dengan proteksi nilai null
             return barusan.sort((a, b) => {
               const tA = a.tanggal_mulai || '';
               const tB = b.tanggal_mulai || '';
