@@ -11,6 +11,7 @@ type JadwalRow = {
   lokasi: string | null;
   jenis: string;
   deskripsi: string | null;
+  // Field Sabat Lama
   ss_mc: string | null;
   ss_doa_buka: string | null;
   ss_diskusi: string | null;
@@ -22,15 +23,22 @@ type JadwalRow = {
   khotbah_cerita_anak: string | null;
   pembawa_firman: string | null;
   pianis: string | null;
+  // Field Baru: Rabu Malam & Pemuda
+  mc_doa_buka: string | null;
+  doa_syafaat: string | null;
+  renungan: string | null;
+  operator: string | null;
+  games: string | null;
+  acara_inti: string | null;
   penanggung_jawab_id?: string | null;
 };
 
 type FormState = Omit<JadwalRow, 'id'>;
 
 const JENIS_OPTIONS = [
-  { value: 'Kebaktian Utama', label: '⛪ Kebaktian Utama' },
-  { value: 'Sabat Sekolah', label: '🌅 Sabat Sekolah' },
-  { value: 'Rabu Malam', label: '🌙 Rabu Malam' },
+  { value: 'Kebaktian Utama', label: '⛪ Kebaktian Utama (Sabat)' },
+  { value: 'Rabu Malam', label: '🌙 Rabu Malam (Doa)' },
+  { value: 'Pemuda', label: '🔥 Pertemuan Pemuda (PA)' },
   { value: 'Vesper', label: '🕯️ Ibadah Vesper' },
 ];
 
@@ -51,6 +59,12 @@ const INITIAL_FORM: FormState = {
   khotbah_cerita_anak: '',
   pembawa_firman: '',
   pianis: '',
+  mc_doa_buka: '',
+  doa_syafaat: '',
+  renungan: '',
+  operator: '',
+  games: '',
+  acara_inti: '',
   penanggung_jawab_id: null
 };
 
@@ -68,13 +82,11 @@ export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // State Form Login Internal
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginErr, setLoginErr] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
 
-  // State Fitur Utama
   const [jadwals, setJadwals] = useState<JadwalRow[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -143,7 +155,6 @@ export default function AdminPage() {
     );
   }
 
-  // 🔒 BEAUTIFUL LOGIN INTERFACE
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 flex items-center justify-center p-4">
@@ -196,7 +207,6 @@ export default function AdminPage() {
     );
   }
 
-  // 🔓 BEAUTIFUL MAIN PANEL INTERFACE
   const filtered = jadwals.filter(j => {
     if (!j) return false;
     const s = search.toLowerCase().trim();
@@ -205,7 +215,6 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 pb-16 antialiased">
-      {/* Dynamic Glassmorphism Header */}
       <header className="bg-slate-900 text-white sticky top-0 z-40 shadow-xl border-b border-slate-800">
         <div className="max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -234,9 +243,7 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* Main Container */}
       <main className="max-w-6xl mx-auto px-4 mt-8 space-y-6">
-        {/* Search Bar Dashboard */}
         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
           <span className="text-slate-400 text-lg pl-1">🔍</span>
           <input 
@@ -248,7 +255,6 @@ export default function AdminPage() {
           />
         </div>
 
-        {/* Content Section */}
         {loading ? (
           <div className="text-center py-24 text-slate-400 text-sm font-medium animate-pulse flex flex-col items-center justify-center gap-2">
             <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
@@ -299,8 +305,9 @@ function JadwalCard({ row, onUpdated, onDeleted }: { row: JadwalRow; onUpdated: 
   const getBadgeStyle = (jenis: string) => {
     switch(jenis) {
       case 'Kebaktian Utama': return 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
-      case 'Sabat Sekolah': return 'bg-amber-50 text-amber-700 border-amber-200/60';
-      case 'Rabu Malam': return 'bg-indigo-50 text-indigo-700 border-indigo-200/60';
+      case 'Rabu Malam': return 'bg-purple-50 text-purple-700 border-purple-200/60';
+      case 'Pemuda': return 'bg-orange-50 text-orange-700 border-orange-200/60';
+      case 'Vesper': return 'bg-indigo-50 text-indigo-700 border-indigo-200/60';
       default: return 'bg-slate-100 text-slate-700 border-slate-200';
     }
   };
@@ -339,12 +346,14 @@ function JadwalCard({ row, onUpdated, onDeleted }: { row: JadwalRow; onUpdated: 
   );
 }
 
-// ─── Component: Form Fields Input (Clean & High Contrast) ────────────────────
+// ─── Component: Form Fields Input (Dinamis Berdasarkan Kategori) ────────────────────
 function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
   const upd = (key: keyof FormState, val: any) => setForm({ ...form, [key]: val === '' ? null : val });
   
   const inputStyle = "w-full mt-1.5 px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 hover:bg-white focus:bg-white text-black font-semibold shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
   const labelStyle = "text-[11px] font-bold text-slate-500 uppercase tracking-wider";
+
+  const currentJenis = getStringValue(form.jenis);
 
   return (
     <div className="space-y-6 max-h-[65vh] overflow-y-auto pr-2 text-left scrollbar-thin">
@@ -352,11 +361,11 @@ function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState
       <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
           <label className={labelStyle}>Judul Acara / Tema Ibadah</label>
-          <input type="text" required value={getStringValue(form.judul)} onChange={e => upd('judul', e.target.value)} className={inputStyle} placeholder="Contoh: Kebaktian Sabat Suci, Kuasa Doa" />
+          <input type="text" required value={getStringValue(form.judul)} onChange={e => upd('judul', e.target.value)} className={inputStyle} placeholder="Contoh: Kebaktian Sabat Suci, Kuasa Doa, PA Pemuda" />
         </div>
         <div>
           <label className={labelStyle}>Kategori Ibadah</label>
-          <select value={getStringValue(form.jenis)} onChange={e => upd('jenis', e.target.value)} className={`${inputStyle} bg-white`}>
+          <select value={currentJenis} onChange={e => upd('jenis', e.target.value)} className={`${inputStyle} bg-white`}>
             {JENIS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
@@ -374,50 +383,102 @@ function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState
         </div>
       </div>
 
-      {/* Section 2: Susunan Petugas Sekolah Sabat */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-          <span className="text-base">🌅</span>
-          <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Sesi I: Petugas Sekolah Sabat</h4>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {[
-            { k: 'ss_mc', l: 'MC / Protokol' },
-            { k: 'ss_doa_buka', l: 'Doa Pembuka' },
-            { k: 'ss_diskusi', l: 'Pemimpin Diskusi / Guru SS' },
-            { k: 'ss_mission', l: 'Pembaca Cerita Mission' },
-            { k: 'ss_pp_doa', l: 'Pujian & Doa Syafaat' },
-            { k: 'ss_persembahan', l: 'Petugas Ambil Persembahan' }
-          ].map(i => (
-            <div key={i.k}>
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
-              <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ================= CONDITIONALLY RENDERED SECTIONS ================= */}
 
-      {/* Section 3: Susunan Kebaktian Utama / Khotbah */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-          <span className="text-base">📖</span>
-          <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Sesi II: Petugas Kebaktian Utama</h4>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {[
-            { k: 'khotbah_lagu_pujian', l: 'Lagu Pujian Jemaat' },
-            { k: 'khotbah_mc', l: 'MC / Pemimpin Jemaat' },
-            { k: 'khotbah_cerita_anak', l: 'Cerita Anak-anak' },
-            { k: 'pembawa_firman', l: 'Pembawa Firman (Khotbah)' },
-            { k: 'pianis', l: 'Pianis / Organis' }
-          ].map(i => (
-            <div key={i.k}>
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
-              <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
+      {/* ⛪ FORM KHUSUS: SABAT / KEBAKTIAN UTAMA */}
+      {(currentJenis === 'Kebaktian Utama' || currentJenis === 'Sabat Sekolah' || currentJenis === 'Vesper') && (
+        <>
+          {/* Sesi 1: Sekolah Sabat */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+              <span className="text-base">🌅</span>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Sesi I: Petugas Sekolah Sabat</h4>
             </div>
-          ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {[
+                { k: 'ss_mc', l: 'MC / Protokol' },
+                { k: 'ss_doa_buka', l: 'Doa Pembuka' },
+                { k: 'ss_diskusi', l: 'Pemimpin Diskusi / Guru SS' },
+                { k: 'ss_mission', l: 'Pembaca Cerita Mission' },
+                { k: 'ss_pp_doa', l: 'Pujian & Doa Syafaat' },
+                { k: 'ss_persembahan', l: 'Petugas Ambil Persembahan' }
+              ].map(i => (
+                <div key={i.k}>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
+                  <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sesi 2: Kebaktian Utama */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+              <span className="text-base">📖</span>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Sesi II: Petugas Kebaktian Utama</h4>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {[
+                { k: 'khotbah_lagu_pujian', l: 'Lagu Pujian Jemaat' },
+                { k: 'khotbah_mc', l: 'MC / Pemimpin Jemaat' },
+                { k: 'khotbah_cerita_anak', l: 'Cerita Anak-anak' },
+                { k: 'pembawa_firman', l: 'Pembawa Firman (Khotbah)' },
+                { k: 'pianis', l: 'Pianis / Organis' }
+              ].map(i => (
+                <div key={i.k}>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
+                  <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 🌙 FORM KHUSUS: RABU MALAM */}
+      {currentJenis === 'Rabu Malam' && (
+        <div className="bg-white rounded-2xl p-5 border border-purple-200 shadow-2xs space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-purple-100">
+            <span className="text-base">🌙</span>
+            <h4 className="text-xs font-black uppercase tracking-wider text-purple-900">Susunan Petugas Doa Rabu Malam</h4>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {[
+              { k: 'mc_doa_buka', l: 'MC & Doa Buka' },
+              { k: 'doa_syafaat', l: 'Doa Syafaat' },
+              { k: 'renungan', l: 'Renungan Firman' },
+              { k: 'operator', l: 'Operator Multimedia / Sound' }
+            ].map(i => (
+              <div key={i.k}>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
+                <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* 🔥 FORM KHUSUS: PERTEMUAN PEMUDA (PA) */}
+      {currentJenis === 'Pemuda' && (
+        <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-2xs space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-orange-100">
+            <span className="text-base">🔥</span>
+            <h4 className="text-xs font-black uppercase tracking-wider text-orange-900">Susunan Petugas Pertemuan Pemuda</h4>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {[
+              { k: 'mc_doa_buka', l: 'MC / Doa Buka Pemuda' },
+              { k: 'games', l: 'Pemimpin Games / Aktivitas' },
+              { k: 'acara_inti', l: 'Penanggung Jawab Acara Inti / Renungan' }
+            ].map(i => (
+              <div key={i.k}>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
+                <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
