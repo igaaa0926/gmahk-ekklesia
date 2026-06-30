@@ -3,564 +3,611 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 
-// ─── Types & Interfaces ──────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 type JadwalRow = {
   id: string;
   judul: string;
   tanggal_mulai: string;
+  tanggal_selesai: string | null;
   lokasi: string | null;
   jenis: string;
   deskripsi: string | null;
-  // Field Sabat Lama
+  // Sekolah Sabat
   ss_mc: string | null;
   ss_doa_buka: string | null;
   ss_diskusi: string | null;
   ss_mission: string | null;
   ss_pp_doa: string | null;
   ss_persembahan: string | null;
+  // Khotbah Utama
   khotbah_lagu_pujian: string | null;
+  khotbah_bacaan_persembahan: string | null;
   khotbah_mc: string | null;
   khotbah_cerita_anak: string | null;
   pembawa_firman: string | null;
   pianis: string | null;
-  // Field Baru: Rabu Malam & Pemuda
+  // Rabu Malam & Pemuda (Dikembalikan seperti semula)
   mc_doa_buka: string | null;
   doa_syafaat: string | null;
   renungan: string | null;
   operator: string | null;
   games: string | null;
   acara_inti: string | null;
-  penanggung_jawab_id?: string | null;
 };
 
 type FormState = Omit<JadwalRow, 'id'>;
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const JENIS_OPTIONS = [
-  { value: 'Kebaktian Utama', label: '⛪ Kebaktian Utama (Sabat)' },
-  { value: 'Rabu Malam', label: '🌙 Rabu Malam (Doa)' },
-  { value: 'Pemuda', label: '🔥 Pertemuan Pemuda (PA)' },
-  { value: 'Vesper', label: '🕯️ Ibadah Vesper' },
+  { value: 'ibadah_umum', label: 'Ibadah Umum' },
+  { value: 'doa', label: 'Ibadah Doa' },
+  { value: 'pemuda', label: 'Pemuda' },
+  { value: 'anak', label: 'Sekolah Sabat Anak' },
+  { value: 'lainnya', label: 'Lainnya' },
 ];
 
-const INITIAL_FORM: FormState = {
-  judul: '',
-  tanggal_mulai: '',
-  lokasi: 'Gedung Gereja GMAHK Ekklesia',
-  jenis: 'Kebaktian Utama',
-  deskripsi: '',
-  ss_mc: '',
-  ss_doa_buka: '',
-  ss_diskusi: '',
-  ss_mission: '',
-  ss_pp_doa: '',
-  ss_persembahan: '',
-  khotbah_lagu_pujian: '',
-  khotbah_mc: '',
-  khotbah_cerita_anak: '',
-  pembawa_firman: '',
-  pianis: '',
-  mc_doa_buka: '',
-  doa_syafaat: '',
-  renungan: '',
-  operator: '',
-  games: '',
-  acara_inti: '',
-  penanggung_jawab_id: null
+const JENIS_BADGE: Record<string, string> = {
+  ibadah_umum: 'bg-blue-100 text-blue-700',
+  doa:         'bg-violet-100 text-violet-700',
+  pemuda:      'bg-emerald-100 text-emerald-700',
+  anak:        'bg-amber-100 text-amber-700',
+  lainnya:     'bg-slate-100 text-slate-600',
 };
 
-function getStringValue(val: any): string {
-  if (val === null || val === undefined) return '';
-  return typeof val === 'object' ? String(val.nama || val.name || '') : String(val);
+const SS_FIELDS: { key: keyof FormState; label: string }[] = [
+  { key: 'ss_mc',          label: 'MC / Protokol' },
+  { key: 'ss_doa_buka',    label: 'Doa Buka' },
+  { key: 'ss_diskusi',     label: 'Diskusi SS / Guru' },
+  { key: 'ss_mission',     label: 'Cerita Mission' },
+  { key: 'ss_pp_doa',      label: 'PP & Doa / Pemimpin Lagu' },
+  { key: 'ss_persembahan', label: 'Petugas Ambil Persembahan' },
+];
+
+const KHOTBAH_FIELDS: { key: keyof FormState; label: string }[] = [
+  { key: 'khotbah_mc',                 label: 'MC / Pemimpin Jemaat' },
+  { key: 'pianis',                     label: 'Pianis / Organis' },
+  { key: 'khotbah_lagu_pujian',        label: 'Lagu Pujian Spesial' },
+  { key: 'khotbah_bacaan_persembahan', label: 'Bacaan Persembahan' },
+  { key: 'khotbah_cerita_anak',        label: 'Cerita Anak-anak' },
+  { key: 'pembawa_firman',             label: 'Khotbah / Pembawa Firman' },
+];
+
+// Dikembalikan seperti semula
+const TAMBAHAN_FIELDS: { key: keyof FormState; label: string }[] = [
+  { key: 'mc_doa_buka', label: 'MC & Doa Buka' },
+  { key: 'doa_syafaat', label: 'Doa Syafaat' },
+  { key: 'renungan',    label: 'Renungan Firman' },
+  { key: 'operator',    label: 'Operator Multimedia / Sound' },
+  { key: 'games',       label: 'Pemimpin Games (Pemuda)' },
+  { key: 'acara_inti',  label: 'Acara Inti Pemuda' },
+];
+
+const EMPTY_FORM: FormState = {
+  judul: '', tanggal_mulai: '', tanggal_selesai: '', lokasi: '', jenis: 'ibadah_umum', deskripsi: '',
+  ss_mc: '', ss_doa_buka: '', ss_diskusi: '', ss_mission: '', ss_pp_doa: '', ss_persembahan: '',
+  khotbah_lagu_pujian: '', khotbah_bacaan_persembahan: '', khotbah_mc: '',
+  khotbah_cerita_anak: '', pembawa_firman: '', pianis: '',
+  mc_doa_buka: '', doa_syafaat: '', renungan: '', operator: '', games: '', acara_inti: '',
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function rowToForm(row: JadwalRow): FormState {
+  return {
+    judul: row.judul,
+    tanggal_mulai: row.tanggal_mulai?.slice(0, 16) ?? '',
+    tanggal_selesai: row.tanggal_selesai?.slice(0, 16) ?? '',
+    lokasi: row.lokasi ?? '',
+    jenis: row.jenis,
+    deskripsi: row.deskripsi ?? '',
+    ss_mc: row.ss_mc ?? '',
+    ss_doa_buka: row.ss_doa_buka ?? '',
+    ss_diskusi: row.ss_diskusi ?? '',
+    ss_mission: row.ss_mission ?? '',
+    ss_pp_doa: row.ss_pp_doa ?? '',
+    ss_persembahan: row.ss_persembahan ?? '',
+    khotbah_lagu_pujian: row.khotbah_lagu_pujian ?? '',
+    khotbah_bacaan_persembahan: row.khotbah_bacaan_persembahan ?? '',
+    khotbah_mc: row.khotbah_mc ?? '',
+    khotbah_cerita_anak: row.khotbah_cerita_anak ?? '',
+    pembawa_firman: row.pembawa_firman ?? '',
+    pianis: row.pianis ?? '',
+    mc_doa_buka: row.mc_doa_buka ?? '',
+    doa_syafaat: row.doa_syafaat ?? '',
+    renungan: row.renungan ?? '',
+    operator: row.operator ?? '',
+    games: row.games ?? '',
+    acara_inti: row.acara_inti ?? '',
+  };
 }
 
-function getSafeDateString(isoString: any): string {
-  return (isoString && typeof isoString === 'string') ? isoString.substring(0, 16) : '';
+function formToPayload(f: FormState) {
+  const clean = (v: string | null) => v?.trim() || null;
+  return {
+    judul: f.judul.trim(),
+    tanggal_mulai: f.tanggal_mulai,
+    tanggal_selesai: f.tanggal_selesai || null,
+    lokasi: clean(f.lokasi),
+    jenis: f.jenis,
+    deskripsi: clean(f.deskripsi),
+    ss_mc: clean(f.ss_mc), ss_doa_buka: clean(f.ss_doa_buka), ss_diskusi: clean(f.ss_diskusi),
+    ss_mission: clean(f.ss_mission), ss_pp_doa: clean(f.ss_pp_doa), ss_persembahan: clean(f.ss_persembahan),
+    khotbah_lagu_pujian: clean(f.khotbah_lagu_pujian), khotbah_bacaan_persembahan: clean(f.khotbah_bacaan_persembahan),
+    khotbah_mc: clean(f.khotbah_mc), khotbah_cerita_anak: clean(f.khotbah_cerita_anak),
+    pembawa_firman: clean(f.pembawa_firman), pianis: clean(f.pianis),
+    mc_doa_buka: clean(f.mc_doa_buka), doa_syafaat: clean(f.doa_syafaat), renungan: clean(f.renungan),
+    operator: clean(f.operator), games: clean(f.games), acara_inti: clean(f.acara_inti),
+  };
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-export default function AdminPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [authLoading, setAuthLoading] = useState(true);
-  
-  const [usernameInput, setUsernameInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [loginErr, setLoginErr] = useState('');
-  const [loginLoading, setLoginLoading] = useState(false);
-
-  const [jadwals, setJadwals] = useState<JadwalRow[]>([]);
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-
-  useEffect(() => {
-    const localStatus = localStorage.getItem('admin_authenticated');
-    if (localStatus === 'true') {
-      setIsLoggedIn(true);
-    }
-    setAuthLoading(false);
-  }, []);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('jadwal_ibadah')
-        .select('*')
-        .order('tanggal_mulai', { ascending: false });
-      if (error) throw error;
-      setJadwals(data || []);
-    } catch (err: any) {
-      console.error(err.message || 'Gagal memuat data');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isLoggedIn) loadData();
-  }, [isLoggedIn, loadData]);
-
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginLoading(true);
-    setLoginErr('');
-
-    const expectedUsername = process.env.NEXT_PUBLIC_ADMIN_USERNAME;
-    const expectedPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
-
-    if (usernameInput === expectedUsername && passwordInput === expectedPassword) {
-      localStorage.setItem('admin_authenticated', 'true');
-      setIsLoggedIn(true);
-    } else {
-      setLoginErr('Username atau Password salah!');
-    }
-    setLoginLoading(false);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('admin_authenticated');
-    setIsLoggedIn(false);
-    setUsernameInput('');
-    setPasswordInput('');
-  };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Memeriksa Otorisasi...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 flex items-center justify-center p-4">
-        <div className="bg-white/95 backdrop-blur-md rounded-3xl p-8 max-w-md w-full text-center shadow-2xl border border-white/20 transform transition-all">
-          <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
-            🔐
-          </div>
-          <h2 className="text-2xl font-black tracking-tight text-slate-900">Admin Panel</h2>
-          <p className="text-xs font-medium text-slate-500 mt-1 mb-8">GMAHK Ekklesia Management System</p>
-          
-          {loginErr && (
-            <div className="mb-6 p-3.5 text-xs bg-red-50 border border-red-100 text-red-600 rounded-xl font-semibold flex items-center gap-2 justify-center">
-              ⚠️ {loginErr}
-            </div>
-          )}
-
-          <form onSubmit={handleLoginSubmit} className="space-y-5 text-left">
-            <div>
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Username</label>
-              <input 
-                type="text" 
-                required 
-                value={usernameInput} 
-                onChange={e => setUsernameInput(e.target.value)} 
-                className="w-full mt-1.5 px-4 py-3 text-sm border border-slate-200 rounded-xl bg-white text-black font-semibold shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all"
-                placeholder="Masukkan username admin"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Password</label>
-              <input 
-                type="password" 
-                required 
-                value={passwordInput} 
-                onChange={e => setPasswordInput(e.target.value)} 
-                className="w-full mt-1.5 px-4 py-3 text-sm border border-slate-200 rounded-xl bg-white text-black font-semibold shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all"
-                placeholder="••••••••"
-              />
-            </div>
-            <button 
-              type="submit" 
-              disabled={loginLoading} 
-              className="w-full mt-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-blue-600/20 cursor-pointer disabled:opacity-50 transition-all hover:-translate-y-0.5 active:translate-y-0"
-            >
-              {loginLoading ? 'Membuka Panel...' : 'Masuk Sistem Admin →'}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  const filtered = jadwals.filter(j => {
-    if (!j) return false;
-    const s = search.toLowerCase().trim();
-    return !s || getStringValue(j.judul).toLowerCase().includes(s) || getStringValue(j.jenis).toLowerCase().includes(s);
+function fmt(iso: string | null) {
+  if (!iso) return '–';
+  return new Date(iso).toLocaleDateString('id-ID', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Makassar',
   });
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function CrossIcon({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className={className}>
+      <path d="M12 3v18M3 9h18" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"
+        strokeDasharray="40" strokeDashoffset="10" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function Toast({ msg, type }: { msg: string; type: 'ok' | 'err' }) {
+  return (
+    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5
+      px-5 py-3 rounded-2xl shadow-xl text-sm font-medium text-white transition-all
+      ${type === 'ok' ? 'bg-emerald-600' : 'bg-red-600'}`}>
+      {type === 'ok'
+        ? <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+        : <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>}
+      {msg}
+    </div>
+  );
+}
+
+function SesiHeader({ color, icon, title, subtitle }: { color: string; icon: string; title: string; subtitle: string }) {
+  return (
+    <div className={`flex items-start gap-3 px-4 py-3 rounded-xl mb-4 ${color}`}>
+      <span className="text-2xl leading-none mt-0.5">{icon}</span>
+      <div>
+        <p className="font-semibold text-sm">{title}</p>
+        <p className="text-xs opacity-70 mt-0.5">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  label, value, onChange, placeholder = '', half = false,
+}: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; half?: boolean;
+}) {
+  return (
+    <div className={half ? '' : 'sm:col-span-2'}>
+      <label className="block text-xs font-medium text-slate-500 mb-1.5">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder || label}
+        className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-white
+          placeholder:text-slate-300 text-slate-800
+          focus:outline-none focus:ring-2 focus:ring-[#1a3a6e]/25 focus:border-[#1a3a6e]
+          transition-all"
+      />
+    </div>
+  );
+}
+
+// ─── JadwalCard (edit inline) ─────────────────────────────────────────────────
+
+function JadwalCard({ row, onUpdated, onDeleted }: {
+  row: JadwalRow;
+  onUpdated: (r: JadwalRow) => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(rowToForm(row));
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
+
+  function set(k: keyof FormState, v: string) { setForm(p => ({ ...p, [k]: v })); }
+
+  function showToast(msg: string, type: 'ok' | 'err') {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  }
+
+  async function handleSave() {
+    if (!form.judul || !form.tanggal_mulai) return showToast('Judul & tanggal wajib diisi.', 'err');
+    setBusy(true);
+    const { data, error } = await supabase
+      .from('jadwal_ibadah').update(formToPayload(form)).eq('id', row.id).select().single();
+    setBusy(false);
+    if (error || !data) return showToast('Gagal menyimpan.', 'err');
+    onUpdated(data as JadwalRow);
+    showToast('Jadwal berhasil diperbarui.', 'ok');
+    setOpen(false);
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Hapus "${row.judul}"?`)) return;
+    setBusy(true);
+    const { error } = await supabase.from('jadwal_ibadah').delete().eq('id', row.id);
+    setBusy(false);
+    if (error) return showToast('Gagal menghapus.', 'err');
+    onDeleted(row.id);
+  }
+
+  const badge = JENIS_BADGE[row.jenis] ?? JENIS_BADGE.lainnya;
+  const jenisLabel = JENIS_OPTIONS.find(o => o.value === row.jenis)?.label ?? row.jenis;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 pb-16 antialiased">
-      <header className="bg-slate-900 text-white sticky top-0 z-40 shadow-xl border-b border-slate-800">
-        <div className="max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-xl">
-              ⛪
-            </div>
-            <div>
-              <h1 className="text-lg font-black uppercase tracking-tight">GMAHK Ekklesia</h1>
-              <p className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">Sistem Manajemen Jadwal Jemaat</p>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+      <div className="flex items-start gap-3 px-5 py-4">
+        <button onClick={() => setOpen(p => !p)} className="flex-1 text-left min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${badge}`}>{jenisLabel}</span>
+          </div>
+          <p className="font-semibold text-[#0f2040] leading-snug">{row.judul}</p>
+          <p className="text-xs text-slate-400 mt-0.5">{fmt(row.tanggal_mulai)}{row.lokasi ? ` · ${row.lokasi}` : ''}</p>
+        </button>
+        <div className="flex items-center gap-1 shrink-0 mt-0.5">
+          <button
+            onClick={() => setOpen(p => !p)}
+            className="p-2 rounded-lg text-slate-400 hover:text-[#1a3a6e] hover:bg-slate-100 transition-colors text-xs font-medium"
+            title={open ? 'Tutup' : 'Edit'}
+          >
+            {open ? '▲' : '✏️'}
+          </button>
+          <button
+            onClick={handleDelete} disabled={busy}
+            className="p-2 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+            title="Hapus"
+          >
+            🗑
+          </button>
+        </div>
+      </div>
+
+      <div className={`overflow-hidden transition-all duration-300 ${open ? 'max-h-[2500px]' : 'max-h-0'}`}>
+        <div className="border-t border-slate-100 px-5 py-5 space-y-6">
+
+          {/* Info Dasar */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Info Jadwal</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Judul Ibadah" value={form.judul} onChange={v => set('judul', v)} />
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Jenis</label>
+                <select value={form.jenis} onChange={e => set('jenis', e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-white
+                    focus:outline-none focus:ring-2 focus:ring-[#1a3a6e]/25 focus:border-[#1a3a6e] transition-all">
+                  {JENIS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Tanggal & Jam Mulai</label>
+                <input type="datetime-local" value={form.tanggal_mulai} onChange={e => set('tanggal_mulai', e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-white
+                    focus:outline-none focus:ring-2 focus:ring-[#1a3a6e]/25 focus:border-[#1a3a6e] transition-all" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Tanggal & Jam Selesai</label>
+                <input type="datetime-local" value={form.tanggal_selesai ?? ''} onChange={e => set('tanggal_selesai', e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-white
+                    focus:outline-none focus:ring-2 focus:ring-[#1a3a6e]/25 focus:border-[#1a3a6e] transition-all" />
+              </div>
+              <Field label="Lokasi" value={form.lokasi ?? ''} onChange={v => set('lokasi', v)} half />
+              <Field label="Deskripsi (opsional)" value={form.deskripsi ?? ''} onChange={v => set('deskripsi', v)} half />
             </div>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button 
-              onClick={() => setShowAdd(true)} 
-              className="flex-1 sm:flex-none px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-md shadow-blue-600/10 cursor-pointer transition-all hover:-translate-y-0.5"
-            >
-              ➕ Tambah Jadwal Baru
+
+          {/* Sekolah Sabat */}
+          <div>
+            <SesiHeader color="bg-indigo-50 text-indigo-800" icon="📖" title="Sesi Sekolah Sabat" subtitle="Petugas untuk sesi Sekolah Sabat" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {SS_FIELDS.map(f => (
+                <Field key={f.key} label={f.label} value={(form[f.key] as string) ?? ''} onChange={v => set(f.key, v)} half />
+              ))}
+            </div>
+          </div>
+
+          {/* Khotbah Utama */}
+          <div>
+            <SesiHeader color="bg-amber-50 text-amber-800" icon="🎵" title="Sesi Khotbah / Ibadah Utama" subtitle="Petugas untuk sesi Kebaktian Utama" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {KHOTBAH_FIELDS.map(f => (
+                <Field key={f.key} label={f.label} value={(form[f.key] as string) ?? ''} onChange={v => set(f.key, v)} half />
+              ))}
+            </div>
+          </div>
+
+          {/* Rabu Malam & Pemuda (Dikembangkan) */}
+          <div>
+            <SesiHeader color="bg-emerald-50 text-emerald-800" icon="🌙" title="Petugas Rabu Malam / Pemuda" subtitle="Formulir petugas pelengkap terintegrasi" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {TAMBAHAN_FIELDS.map(f => (
+                <Field key={f.key} label={f.label} value={(form[f.key] as string) ?? ''} onChange={v => set(f.key, v)} half />
+              ))}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-1">
+            <button onClick={() => setOpen(false)}
+              className="px-4 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+              Batal
             </button>
-            <button 
-              onClick={handleLogout} 
-              className="px-4 py-2.5 bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer transition-colors"
-            >
-              🚪 Keluar
+            <button onClick={handleSave} disabled={busy}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl
+                bg-[#1a3a6e] hover:bg-[#142e58] text-white disabled:opacity-60 transition-all active:scale-95 shadow-sm">
+              {busy ? <Spinner /> : null} Simpan Perubahan
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {toast && <Toast msg={toast.msg} type={toast.type} />}
+    </div>
+  );
+}
+
+// ─── Add Jadwal Modal ─────────────────────────────────────────────────────────
+
+function AddModal({ onClose, onAdded }: { onClose: () => void; onAdded: (r: JadwalRow) => void }) {
+  const [form, setForm] = useState<FormState>({ ...EMPTY_FORM });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  function set(k: keyof FormState, v: string) { setForm(p => ({ ...p, [k]: v })); setErr(''); }
+
+  async function handleAdd() {
+    if (!form.judul.trim() || !form.tanggal_mulai) return setErr('Judul & tanggal wajib diisi.');
+    setBusy(true);
+    const { data, error } = await supabase.from('jadwal_ibadah').insert(formToPayload(form)).select().single();
+    setBusy(false);
+    if (error || !data) return setErr('Gagal menambah jadwal.');
+    onAdded(data as JadwalRow);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl my-8">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#7b9fcf]">Tambah Baru</p>
+            <h2 className="text-lg font-bold text-[#0f2040]">Jadwal Ibadah</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-lg transition-colors">×</button>
+        </div>
+
+        <div className="px-6 py-5 space-y-6">
+          {/* Info Dasar */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Info Jadwal</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Judul Ibadah *" value={form.judul} onChange={v => set('judul', v)} />
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Jenis *</label>
+                <select value={form.jenis} onChange={e => set('jenis', e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-white
+                    focus:outline-none focus:ring-2 focus:ring-[#1a3a6e]/25 focus:border-[#1a3a6e] transition-all">
+                  {JENIS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Tanggal & Jam Mulai *</label>
+                <input type="datetime-local" value={form.tanggal_mulai} onChange={e => set('tanggal_mulai', e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-white
+                    focus:outline-none focus:ring-2 focus:ring-[#1a3a6e]/25 focus:border-[#1a3a6e] transition-all" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Tanggal & Jam Selesai</label>
+                <input type="datetime-local" value={form.tanggal_selesai ?? ''} onChange={e => set('tanggal_selesai', e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-white
+                    focus:outline-none focus:ring-2 focus:ring-[#1a3a6e]/25 focus:border-[#1a3a6e] transition-all" />
+              </div>
+              <Field label="Lokasi" value={form.lokasi ?? ''} onChange={v => set('lokasi', v)} half />
+              <Field label="Deskripsi (opsional)" value={form.deskripsi ?? ''} onChange={v => set('deskripsi', v)} half />
+            </div>
+          </div>
+
+          {/* Sekolah Sabat */}
+          <div>
+            <SesiHeader color="bg-indigo-50 text-indigo-800" icon="📖" title="Sesi Sekolah Sabat" subtitle="Kosongkan jika belum ada petugas" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {SS_FIELDS.map(f => (
+                <Field key={f.key} label={f.label} value={(form[f.key] as string) ?? ''} onChange={v => set(f.key, v)} half />
+              ))}
+            </div>
+          </div>
+
+          {/* Khotbah */}
+          <div>
+            <SesiHeader color="bg-amber-50 text-amber-800" icon="🎵" title="Sesi Khotbah / Ibadah Utama" subtitle="Kosongkan jika belum ada petugas" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {KHOTBAH_FIELDS.map(f => (
+                <Field key={f.key} label={f.label} value={(form[f.key] as string) ?? ''} onChange={v => set(f.key, v)} half />
+              ))}
+            </div>
+          </div>
+
+          {/* Tambahan Rabu Malam & Pemuda */}
+          <div>
+            <SesiHeader color="bg-emerald-50 text-emerald-800" icon="🌙" title="Petugas Rabu Malam / Pemuda" subtitle="Kosongkan jika belum ada petugas" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {TAMBAHAN_FIELDS.map(f => (
+                <Field key={f.key} label={f.label} value={(form[f.key] as string) ?? ''} onChange={v => set(f.key, v)} half />
+              ))}
+            </div>
+          </div>
+
+          {err && <p className="text-sm text-red-500">{err}</p>}
+
+          <div className="flex justify-end gap-2 pt-1 border-t border-slate-100">
+            <button onClick={onClose} className="px-4 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+              Batal
+            </button>
+            <button onClick={handleAdd} disabled={busy}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl
+                bg-[#1a3a6e] hover:bg-[#142e58] text-white disabled:opacity-60 transition-all active:scale-95 shadow-sm">
+              {busy ? <Spinner /> : null} Tambah Jadwal
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Admin Page ──────────────────────────────────────────────────────────
+
+export default function AdminPage() {
+  const [jadwals, setJadwals] = useState<JadwalRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchErr, setFetchErr] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('jadwal_ibadah')
+      .select('*')
+      .order('tanggal_mulai', { ascending: true });
+    if (error) setFetchErr('Gagal memuat data jadwal.');
+    else setJadwals(data ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = jadwals.filter(j =>
+    j.judul.toLowerCase().includes(search.toLowerCase()) ||
+    (j.lokasi ?? '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const terisi = jadwals.filter(j =>
+    [j.ss_mc, j.khotbah_mc, j.pembawa_firman, j.pianis].some(Boolean)
+  ).length;
+
+  return (
+    <div className="min-h-screen bg-[#f0f4fa]">
+      <header className="bg-[#0f2040] text-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                <CrossIcon className="w-4 h-4" />
+              </span>
+              <span className="font-bold text-sm tracking-wide">GMAHK EKKLESIA</span>
+              <span className="text-xs text-white/30 hidden sm:inline">— Admin Panel</span>
+            </div>
+            <a href="/" className="text-xs text-white/40 hover:text-white/70 transition-colors">← Kembali ke Beranda</a>
+          </div>
+          <div className="py-6 flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#7b9fcf] mb-1">Manajemen Pelayanan</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Jadwal Ibadah</h1>
+            </div>
+            <button onClick={() => setShowAdd(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
+                bg-white text-[#0f2040] hover:bg-slate-100 transition-all shadow-sm active:scale-95">
+              + Tambah Jadwal
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 mt-8 space-y-6">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-          <span className="text-slate-400 text-lg pl-1">🔍</span>
-          <input 
-            type="text" 
-            placeholder="Cari berdasarkan judul jadwal atau kategori ibadah..." 
-            value={search} 
-            onChange={e => setSearch(e.target.value)} 
-            className="w-full bg-transparent border-0 text-sm font-semibold text-black focus:outline-none placeholder:text-slate-400" 
+      <div className="bg-[#162d55] border-b border-white/5">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap gap-6">
+          {[
+            { label: 'Total Jadwal', value: jadwals.length },
+            { label: 'Petugas Terisi', value: terisi },
+            { label: 'Belum Diatur', value: jadwals.length - terisi },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex items-baseline gap-1.5">
+              <span className="text-lg font-bold text-white">{value}</span>
+              <span className="text-xs text-white/40">{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-7">
+        <div className="mb-5">
+          <input
+            type="text"
+            placeholder="Cari jadwal ibadah…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full sm:w-80 px-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white
+              placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-[#1a3a6e]/25 focus:border-[#1a3a6e] transition-all"
           />
         </div>
 
-        {loading ? (
-          <div className="text-center py-24 text-slate-400 text-sm font-medium animate-pulse flex flex-col items-center justify-center gap-2">
-            <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
-            Memuat daftar data jadwal...
+        {loading && (
+          <div className="flex items-center justify-center py-24 gap-3 text-slate-400">
+            <Spinner /><span className="text-sm">Memuat data…</span>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-slate-300 py-16 text-center text-slate-400 text-sm font-medium shadow-2xs">
-            📭 Tidak ada jadwal ibadah yang ditemukan.
+        )}
+
+        {fetchErr && !loading && (
+          <div className="rounded-2xl bg-red-50 border border-red-200 px-5 py-4 text-sm text-red-700">{fetchErr}</div>
+        )}
+
+        {!loading && !fetchErr && filtered.length === 0 && (
+          <div className="text-center py-20">
+            <p className="text-slate-400 text-sm">Tidak ada jadwal yang ditemukan.</p>
+            <button onClick={() => setShowAdd(true)}
+              className="mt-3 text-sm text-[#1a3a6e] font-medium hover:underline">
+              + Tambah jadwal baru
+            </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3.5">
-            {filtered.map(row => row?.id && (
-              <JadwalCard 
-                key={row.id} 
-                row={row}
-                onUpdated={upd => setJadwals(p => p.map(j => j?.id === upd?.id ? upd : j))}
-                onDeleted={id => setJadwals(p => p.filter(j => j?.id !== id))}
+        )}
+
+        {!loading && filtered.length > 0 && (
+          <div className="space-y-3">
+            {filtered.map(row => (
+              <JadwalCard
+                key={row.id} row={row}
+                onUpdated={updated => setJadwals(p => p.map(j => j.id === updated.id ? updated : j))}
+                onDeleted={id => setJadwals(p => p.filter(j => j.id !== id))}
               />
             ))}
           </div>
         )}
       </main>
 
-      {showAdd && <AddModal onClose={() => setShowAdd(false)} onAdded={row => setJadwals(p => [row, ...p])} />}
-    </div>
-  );
-}
-
-// ─── Component: Card Data Jadwal Jemaat ───────────────────────────────────────
-function JadwalCard({ row, onUpdated, onDeleted }: { row: JadwalRow; onUpdated: (r: JadwalRow) => void; onDeleted: (id: string) => void }) {
-  const [showEdit, setShowEdit] = useState(false);
-  const [delLoading, setDelLoading] = useState(false);
-
-  const handleDelete = async () => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus jadwal "${getStringValue(row.judul)}"?`)) return;
-    setDelLoading(true);
-    try {
-      const { error } = await supabase.from('jadwal_ibadah').delete().eq('id', row.id);
-      if (error) throw error;
-      onDeleted(row.id);
-    } catch (err: any) { 
-      alert(err.message); 
-    } finally { 
-      setDelLoading(false); 
-    }
-  };
-
-  const getBadgeStyle = (jenis: string) => {
-    switch(jenis) {
-      case 'Kebaktian Utama': return 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
-      case 'Rabu Malam': return 'bg-purple-50 text-purple-700 border-purple-200/60';
-      case 'Pemuda': return 'bg-orange-50 text-orange-700 border-orange-200/60';
-      case 'Vesper': return 'bg-indigo-50 text-indigo-700 border-indigo-200/60';
-      default: return 'bg-slate-100 text-slate-700 border-slate-200';
-    }
-  };
-
-  return (
-    <div className="bg-white border border-slate-200/70 hover:border-blue-300 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs hover:shadow-md transition-all duration-200">
-      <div className="space-y-1.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-bold text-slate-900 text-base tracking-tight">{getStringValue(row.judul) || 'Tanpa Judul'}</h3>
-          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${getBadgeStyle(getStringValue(row.jenis))}`}>
-            {getStringValue(row.jenis)}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-medium">
-          <span className="flex items-center gap-1">📅 {row.tanggal_mulai ? new Date(row.tanggal_mulai).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '─'} WIB</span>
-          <span className="flex items-center gap-1 text-slate-400">📍 {getStringValue(row.lokasi) || 'Gereja'}</span>
-        </div>
-      </div>
-      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
-        <button 
-          onClick={() => setShowEdit(true)} 
-          className="px-4 py-2 text-xs border border-slate-200 hover:border-slate-300 rounded-xl hover:bg-slate-50 text-slate-700 font-bold shadow-2xs cursor-pointer transition-colors"
-        >
-          ✏️ Edit Detail
-        </button>
-        <button 
-          onClick={handleDelete} 
-          disabled={delLoading} 
-          className="px-4 py-2 text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 rounded-xl font-bold cursor-pointer transition-colors disabled:opacity-50"
-        >
-          {delLoading ? '...' : '🗑️ Hapus'}
-        </button>
-      </div>
-      {showEdit && <EditModal row={row} onClose={() => setShowEdit(false)} onUpdated={onUpdated} />}
-    </div>
-  );
-}
-
-// ─── Component: Form Fields Input (Dinamis Berdasarkan Kategori) ────────────────────
-function FormFields({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
-  const upd = (key: keyof FormState, val: any) => setForm({ ...form, [key]: val === '' ? null : val });
-  
-  const inputStyle = "w-full mt-1.5 px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 hover:bg-white focus:bg-white text-black font-semibold shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
-  const labelStyle = "text-[11px] font-bold text-slate-500 uppercase tracking-wider";
-
-  const currentJenis = getStringValue(form.jenis);
-
-  return (
-    <div className="space-y-6 max-h-[65vh] overflow-y-auto pr-2 text-left scrollbar-thin">
-      {/* Section 1: Informasi Pokok Ibadah */}
-      <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="sm:col-span-2">
-          <label className={labelStyle}>Judul Acara / Tema Ibadah</label>
-          <input type="text" required value={getStringValue(form.judul)} onChange={e => upd('judul', e.target.value)} className={inputStyle} placeholder="Contoh: Kebaktian Sabat Suci, Kuasa Doa, PA Pemuda" />
-        </div>
-        <div>
-          <label className={labelStyle}>Kategori Ibadah</label>
-          <select value={currentJenis} onChange={e => upd('jenis', e.target.value)} className={`${inputStyle} bg-white`}>
-            {JENIS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={labelStyle}>Tanggal & Waktu Mulai</label>
-          <input type="datetime-local" required value={getSafeDateString(form.tanggal_mulai)} onChange={e => upd('tanggal_mulai', e.target.value)} className={inputStyle} />
-        </div>
-        <div className="sm:col-span-2">
-          <label className={labelStyle}>Lokasi Pelaksanaan</label>
-          <input type="text" value={getStringValue(form.lokasi)} onChange={e => upd('lokasi', e.target.value)} className={inputStyle} />
-        </div>
-        <div className="sm:col-span-2">
-          <label className={labelStyle}>Deskripsi Tambahan</label>
-          <textarea value={getStringValue(form.deskripsi)} onChange={e => upd('deskripsi', e.target.value)} rows={2} className={`${inputStyle} resize-none`} placeholder="Keterangan opsional..." />
-        </div>
-      </div>
-
-      {/* ================= CONDITIONALLY RENDERED SECTIONS ================= */}
-
-      {/* ⛪ FORM KHUSUS: SABAT / KEBAKTIAN UTAMA */}
-      {(currentJenis === 'Kebaktian Utama' || currentJenis === 'Sabat Sekolah' || currentJenis === 'Vesper') && (
-        <>
-          {/* Sesi 1: Sekolah Sabat */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-              <span className="text-base">🌅</span>
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Sesi I: Petugas Sekolah Sabat</h4>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {[
-                { k: 'ss_mc', l: 'MC / Protokol' },
-                { k: 'ss_doa_buka', l: 'Doa Pembuka' },
-                { k: 'ss_diskusi', l: 'Pemimpin Diskusi / Guru SS' },
-                { k: 'ss_mission', l: 'Pembaca Cerita Mission' },
-                { k: 'ss_pp_doa', l: 'Pujian & Doa Syafaat' },
-                { k: 'ss_persembahan', l: 'Petugas Ambil Persembahan' }
-              ].map(i => (
-                <div key={i.k}>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
-                  <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Sesi 2: Kebaktian Utama */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-              <span className="text-base">📖</span>
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Sesi II: Petugas Kebaktian Utama</h4>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {[
-                { k: 'khotbah_lagu_pujian', l: 'Lagu Pujian Jemaat' },
-                { k: 'khotbah_mc', l: 'MC / Pemimpin Jemaat' },
-                { k: 'khotbah_cerita_anak', l: 'Cerita Anak-anak' },
-                { k: 'pembawa_firman', l: 'Pembawa Firman (Khotbah)' },
-                { k: 'pianis', l: 'Pianis / Organis' }
-              ].map(i => (
-                <div key={i.k}>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
-                  <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
+      {showAdd && (
+        <AddModal
+          onClose={() => setShowAdd(false)}
+          onAdded={row => setJadwals(p => [...p, row].sort((a, b) => a.tanggal_mulai.localeCompare(b.tanggal_mulai)))}
+        />
       )}
 
-      {/* 🌙 FORM KHUSUS: RABU MALAM */}
-      {currentJenis === 'Rabu Malam' && (
-        <div className="bg-white rounded-2xl p-5 border border-purple-200 shadow-2xs space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-purple-100">
-            <span className="text-base">🌙</span>
-            <h4 className="text-xs font-black uppercase tracking-wider text-purple-900">Susunan Petugas Doa Rabu Malam</h4>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {[
-              { k: 'mc_doa_buka', l: 'MC & Doa Buka' },
-              { k: 'doa_syafaat', l: 'Doa Syafaat' },
-              { k: 'renungan', l: 'Renungan Firman' },
-              { k: 'operator', l: 'Operator Multimedia / Sound' }
-            ].map(i => (
-              <div key={i.k}>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
-                <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 🔥 FORM KHUSUS: PERTEMUAN PEMUDA (PA) */}
-      {currentJenis === 'Pemuda' && (
-        <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-2xs space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-orange-100">
-            <span className="text-base">🔥</span>
-            <h4 className="text-xs font-black uppercase tracking-wider text-orange-900">Susunan Petugas Pertemuan Pemuda</h4>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {[
-              { k: 'mc_doa_buka', l: 'MC / Doa Buka Pemuda' },
-              { k: 'games', l: 'Pemimpin Games / Aktivitas' },
-              { k: 'acara_inti', l: 'Penanggung Jawab Acara Inti / Renungan' }
-            ].map(i => (
-              <div key={i.k}>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{i.l}</label>
-                <input type="text" value={getStringValue((form as any)[i.k])} onChange={e => upd(i.k as any, e.target.value)} className={inputStyle} placeholder="Nama petugas" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Component: Modal Tambah Data ───────────────────────────────────────────
-function AddModal({ onClose, onAdded }: { onClose: () => void; onAdded: (r: JadwalRow) => void }) {
-  const [form, setForm] = useState<FormState>(INITIAL_FORM);
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); 
-    setSaving(true);
-    try {
-      const { data, error } = await supabase.from('jadwal_ibadah').insert([form]).select();
-      if (error) throw error;
-      if (data?.[0]) onAdded(data[0]);
-      onClose();
-    } catch (err: any) { 
-      alert(err.message); 
-    } finally { 
-      setSaving(false); 
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-3xl flex flex-col p-6 shadow-2xl border border-slate-100 transform transition-all my-8">
-        <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-100">
-          <h3 className="font-black text-slate-900 text-base uppercase tracking-tight">➕ Tambah Jadwal Baru</h3>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-500 font-bold text-sm flex items-center justify-center cursor-pointer transition-colors">✕</button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <FormFields form={form} setForm={setForm} />
-          <div className="pt-4 border-t border-slate-100 mt-6 flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 uppercase tracking-wider cursor-pointer">Batal</button>
-            <button type="submit" disabled={saving} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-blue-600/10 cursor-pointer disabled:opacity-50">
-              {saving ? 'Menyimpan...' : '💾 Simpan Jadwal'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ─── Component: Modal Edit Data ─────────────────────────────────────────────
-function EditModal({ row, onClose, onUpdated }: { row: JadwalRow; onClose: () => void; onUpdated: (r: JadwalRow) => void }) {
-  const [form, setForm] = useState<FormState>({ ...row });
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); 
-    setSaving(true);
-    try {
-      const { data, error } = await supabase.from('jadwal_ibadah').update(form).eq('id', row.id).select();
-      if (error) throw error;
-      if (data?.[0]) onUpdated(data[0]);
-      onClose();
-    } catch (err: any) { 
-      alert(err.message); 
-    } finally { 
-      setSaving(false); 
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-3xl flex flex-col p-6 shadow-2xl border border-slate-100 transform transition-all my-8">
-        <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-100">
-          <h3 className="font-black text-slate-900 text-base uppercase tracking-tight">✏️ Edit Jadwal Jemaat</h3>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-500 font-bold text-sm flex items-center justify-center cursor-pointer transition-colors">✕</button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <FormFields form={form} setForm={setForm} />
-          <div className="pt-4 border-t border-slate-100 mt-6 flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 uppercase tracking-wider cursor-pointer">Batal</button>
-            <button type="submit" disabled={saving} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-blue-600/10 cursor-pointer disabled:opacity-50">
-              {saving ? 'Memperbarui...' : '💾 Simpan Perubahan'}
-            </button>
-          </div>
-        </form>
-      </div>
+      <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-8 text-center text-xs text-slate-400">
+        GMAHK Ekklesia © {new Date().getFullYear()} · Panel Admin
+      </footer>
     </div>
   );
 }
